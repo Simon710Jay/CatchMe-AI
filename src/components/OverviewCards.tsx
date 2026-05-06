@@ -7,9 +7,9 @@ interface OverviewCardsProps {
 
 export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
       {/* Active Incidents */}
-      <div className="bg-card border border-card-border rounded-xl p-5 shadow-lg">
+      <div className="bg-card border border-card-border rounded-xl p-6 shadow-lg transition-all duration-200 hover:border-white/20 hover:shadow-xl group">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-gray-400 text-sm font-medium">Active Incidents</h3>
           <div className="w-8 h-8 rounded-lg bg-critical/10 flex items-center justify-center">
@@ -26,7 +26,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
       </div>
 
       {/* Errors */}
-      <div className="bg-card border border-card-border rounded-xl p-5 shadow-lg">
+      <div className="bg-card border border-card-border rounded-xl p-6 shadow-lg transition-all duration-200 hover:border-white/20 hover:shadow-xl group">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-gray-400 text-sm font-medium">Total Errors</h3>
           <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
@@ -44,7 +44,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
       </div>
 
       {/* Response Time */}
-      <div className="bg-card border border-card-border rounded-xl p-5 shadow-lg">
+      <div className="bg-card border border-card-border rounded-xl p-6 shadow-lg transition-all duration-200 hover:border-white/20 hover:shadow-xl group">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-gray-400 text-sm font-medium">Avg Response Time</h3>
           <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -61,7 +61,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
       </div>
 
       {/* System Health */}
-      <div className="bg-card border border-card-border rounded-xl p-5 shadow-lg">
+      <div className="bg-card border border-card-border rounded-xl p-6 shadow-lg transition-all duration-200 hover:border-white/20 hover:shadow-xl group">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-gray-400 text-sm font-medium">System Health</h3>
           <div className="w-8 h-8 rounded-lg bg-resolved/10 flex items-center justify-center">

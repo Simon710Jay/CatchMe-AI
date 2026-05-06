@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { OverviewCards } from '@/components/OverviewCards';
 import { LogTable } from '@/components/LogTable';
@@ -60,6 +62,15 @@ const mockInsight: AIInsight = {
 };
 
 export default function DashboardPage() {
+  const [lastUpdated, setLastUpdated] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdated(prev => (prev < 59 ? prev + 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--background)]">
       <Navbar />
@@ -72,10 +83,10 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-colors text-sm font-medium">
+            <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-all hover:scale-[1.02] text-sm font-medium">
               Export Report
             </button>
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium shadow-lg shadow-blue-500/20">
+            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-[1.02] text-sm font-medium shadow-lg shadow-blue-500/20">
               Resolve Incidents
             </button>
           </div>
@@ -83,11 +94,18 @@ export default function DashboardPage() {
 
         <OverviewCards metrics={mockMetrics} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        <div className="flex items-center justify-between mb-2 mt-8">
+          <h2 className="text-lg font-semibold text-transparent">Logs</h2> {/* Visually hidden spacing balance */}
+          <p className="text-xs text-gray-400 font-medium">
+            Last updated: {lastUpdated}s ago
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="lg:col-span-2 flex flex-col">
             <LogTable logs={mockLogs} />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 flex flex-col">
             <AIInsightPanel insight={mockInsight} />
           </div>
         </div>
