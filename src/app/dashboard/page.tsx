@@ -5,6 +5,8 @@ import { Navbar } from '@/components/Navbar';
 import { OverviewCards } from '@/components/OverviewCards';
 import { LogTable } from '@/components/LogTable';
 import { AIInsightPanel } from '@/components/AIInsightPanel';
+import { SystemHealthCharts } from '@/components/SystemHealthCharts';
+import { IncidentList } from '@/components/IncidentList';
 import { Log, SystemMetrics, AIInsight } from '@/types';
 
 // Mock Data
@@ -61,6 +63,29 @@ const mockInsight: AIInsight = {
   recommendedFix: '1. Switch payment routing to secondary region (EU-Central-1)\n2. Implement exponential backoff for failed retries\n3. Alert billing team to monitor failed transactions'
 };
 
+const mockIncidents: Incident[] = [
+  {
+    id: 'inc-1',
+    title: 'Stripe API Connection Failures',
+    service: 'payment-gateway',
+    severity: 'critical',
+    totalEvents: 42,
+    firstSeen: '2026-05-05 18:30:00',
+    lastSeen: '2026-05-05 19:42:01',
+    logs: [mockLogs[0], mockLogs[3]]
+  },
+  {
+    id: 'inc-2',
+    title: 'High Latency in Auth Service',
+    service: 'auth-service',
+    severity: 'warning',
+    totalEvents: 128,
+    firstSeen: '2026-05-05 19:00:00',
+    lastSeen: '2026-05-05 19:40:15',
+    logs: [mockLogs[1]]
+  }
+];
+
 export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState(0);
 
@@ -94,20 +119,20 @@ export default function DashboardPage() {
 
         <OverviewCards metrics={mockMetrics} />
         
-        <div className="flex items-center justify-between mb-2 mt-8">
-          <h2 className="text-lg font-semibold text-transparent">Logs</h2> {/* Visually hidden spacing balance */}
-          <p className="text-xs text-gray-400 font-medium">
+        <SystemHealthCharts />
+
+        <IncidentList incidents={mockIncidents} />
+
+        <div className="flex items-center justify-between mb-4 mt-12">
+          <h2 className="text-xl font-bold text-white">Analysis & Logs</h2>
+          <p className="text-xs text-gray-400 font-medium bg-white/5 px-2 py-1 rounded border border-white/5">
             Last updated: {lastUpdated}s ago
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          <div className="lg:col-span-2 flex flex-col">
-            <LogTable logs={mockLogs} />
-          </div>
-          <div className="lg:col-span-1 flex flex-col">
-            <AIInsightPanel insight={mockInsight} />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+          <LogTable logs={mockLogs} />
+          <AIInsightPanel insight={mockInsight} />
         </div>
       </main>
     </div>

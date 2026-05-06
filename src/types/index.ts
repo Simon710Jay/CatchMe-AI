@@ -6,6 +6,9 @@ export interface Log {
   service: string;
   message: string;
   severity: Severity;
+  stackTrace?: string;
+  endpoint?: string;
+  statusCode?: number;
 }
 
 export interface SystemMetrics {
@@ -21,4 +24,15 @@ export interface AIInsight {
   probableCause: string;
   impact: string;
   recommendedFix: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  service: string;
+  severity: Severity;
+  totalEvents: number;
+  firstSeen: string;
+  lastSeen: string;
+  logs: Log[];
 }
