@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Log {
+  id          String    @id @default(cuid())
+  message     String
+  service     String
+  severity    String
+  timestamp   DateTime  @default(now())
+  stackTrace  String?   @db.Text
+  endpoint    String?
+  statusCode  Int?
+  incidentId  String?
+  incident    Incident? @relation(fields: [incidentId], references: [id])
+
+  @@index([service])
+  @@index([severity])
+  @@index([incidentId])
+}
+
+model Incident {
+  id          String      @id @default(cuid())
+  title       String
+  service     String
+  severity    String
+  count       Int         @default(1)
+  firstSeen   DateTime    @default(now())
+  lastSeen    DateTime    @default(now())
+  status      String      @default("open") // open, resolved, analyzing
+  logs        Log[]
+  analysis    AIAnalysis?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([service])
+  @@index([status])
+}
+
+model AIAnalysis {
+  id              String   @id @default(cuid())
+  incidentId      String   @unique
+  incident        Incident @relation(fields: [incidentId], references: [id])
+  probableCause   String   @db.Text
+  impact          String   @db.Text
+  recommendedFix  String   @db.Text
+  codePatch       String?  @db.Text
+  confidenceScore Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
