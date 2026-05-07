@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import logRoutes from './routes/logRoutes';
 import incidentRoutes from './routes/incidentRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
 
@@ -33,6 +35,8 @@ app.setErrorHandler(errorHandler);
 // Register Routes
 app.register(logRoutes, { prefix: '/api' });
 app.register(incidentRoutes, { prefix: '/api' });
+app.register(notificationRoutes, { prefix: '/api' });
+app.register(dashboardRoutes, { prefix: '/api' });
 
 // Health Check
 app.get('/health', async () => {

@@ -1,7 +1,7 @@
 export type Severity = 'critical' | 'warning' | 'resolved';
 
 export interface Log {
-  id: string;
+  _id: string;
   timestamp: string;
   service: string;
   message: string;
@@ -27,12 +27,31 @@ export interface AIInsight {
 }
 
 export interface Incident {
-  id: string;
+  _id: string;
   title: string;
   service: string;
   severity: Severity;
-  totalEvents: number;
-  firstSeen: string;
-  lastSeen: string;
-  logs: Log[];
+  count: number;
+  status: string;
+  logs?: Log[];
+}
+
+export interface Notification {
+  _id: string;
+  title: string;
+  message: string;
+  severity: Severity;
+  read: boolean;
+  createdAt: string;
+  relatedIncidentId?: string;
+}
+
+export interface DashboardSummary {
+  activeIncidents: number;
+  criticalIncidents: number;
+  totalLogs: number;
+  criticalLogs: number;
+  resolvedIncidents: number;
+  healthPercentage: number;
+  responseTimeMs: number;
 }

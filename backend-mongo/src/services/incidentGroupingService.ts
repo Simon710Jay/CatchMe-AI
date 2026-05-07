@@ -2,6 +2,7 @@ import Incident from '../models/Incident';
 import Log from '../models/Log';
 import { broadcast } from '../websocket/socket';
 import { logger } from '../logger/logger';
+import { NotificationService } from './notificationService';
 
 export class IncidentGroupingService {
   static async groupLogIntoIncident(logId: string) {
@@ -18,10 +19,20 @@ export class IncidentGroupingService {
 
       if (incident) {
         // Update existing incident
+        const oldSeverity = incident.severity;
         incident.count += 1;
         incident.lastSeen = new Date();
         incident.severity = this.getHigherSeverity(incident.severity, log.severity);
         await incident.save();
+
+        if (this.isSeverityUpgraded(oldSeverity, incident.severity)) {
+          await NotificationService.create({
+            title: 'Severity Escalated',
+            message: `Incident "${incident.title}" severity increased to ${incident.severity}`,
+            severity: incident.severity,
+            relatedIncidentId: incident._id,
+          });
+        }
 
         broadcast('incident-updated', incident);
         logger.debug(`Updated incident: ${incident._id}`);
@@ -35,6 +46,13 @@ export class IncidentGroupingService {
           status: 'open',
         });
         await incident.save();
+
+        await NotificationService.create({
+          title: 'New Incident Detected',
+          message: `New incident in ${incident.service}: ${incident.title}`,
+          severity: incident.severity,
+          relatedIncidentId: incident._id,
+        });
 
         broadcast('incident-created', incident);
         logger.info(`Created new incident: ${incident._id}`);
@@ -59,5 +77,10 @@ export class IncidentGroupingService {
     };
 
     return priority[incoming] > priority[current] ? incoming : current;
+  }
+
+  private static isSeverityUpgraded(oldS: string, newS: string): boolean {
+    const priority: Record<string, number> = { critical: 3, warning: 2, info: 1, resolved: 0 };
+    return priority[newS] > priority[oldS];
   }
 }

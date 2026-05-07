@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Navbar } from '@/components/Navbar';
 import { OverviewCards } from '@/components/OverviewCards';
 import { LogTable } from '@/components/LogTable';
 import { AIInsightPanel } from '@/components/AIInsightPanel';
 import { SystemHealthCharts } from '@/components/SystemHealthCharts';
 import { IncidentList } from '@/components/IncidentList';
-import { Log, SystemMetrics, AIInsight } from '@/types';
+import { useDashboard } from '@/hooks/useDashboard';
+import { Log, SystemMetrics, AIInsight, Incident } from '@/types';
 
 // Mock Data
 const mockMetrics: SystemMetrics = {
@@ -87,14 +88,7 @@ const mockIncidents: Incident[] = [
 ];
 
 export default function DashboardPage() {
-  const [lastUpdated, setLastUpdated] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastUpdated(prev => (prev < 59 ? prev + 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const { logs, incidents, notifications, summary, isConnected } = useDashboard();
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--background)]">
@@ -103,35 +97,58 @@ export default function DashboardPage() {
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
         <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white mb-2">System Overview</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold text-white">System Overview</h1>
+              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                isConnected 
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                {isConnected ? 'Live' : 'Disconnected'}
+              </div>
+            </div>
             <p className="text-gray-400">Real-time monitoring and AI analysis</p>
           </div>
           
           <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-all hover:scale-[1.02] text-sm font-medium">
-              Export Report
+            <button 
+              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/logs/export?format=csv`, '_blank')}
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-all hover:scale-[1.02] text-sm font-medium"
+            >
+              Export Logs (CSV)
             </button>
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-[1.02] text-sm font-medium shadow-lg shadow-blue-500/20">
-              Resolve Incidents
+            <button 
+              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/incidents/export?format=csv`, '_blank')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-[1.02] text-sm font-medium shadow-lg shadow-blue-500/20"
+            >
+              Export Incidents
             </button>
           </div>
         </div>
 
-        <OverviewCards metrics={mockMetrics} />
+        <OverviewCards metrics={{
+          activeIncidents: summary?.activeIncidents || 0,
+          errors: summary?.criticalLogs || 0,
+          responseTimeMs: summary?.responseTimeMs || 0,
+          healthPercentage: summary?.healthPercentage || 0
+        }} />
         
         <SystemHealthCharts />
 
-        <IncidentList incidents={mockIncidents} />
+        <IncidentList incidents={incidents} />
 
         <div className="flex items-center justify-between mb-4 mt-12">
           <h2 className="text-xl font-bold text-white">Analysis & Logs</h2>
-          <p className="text-xs text-gray-400 font-medium bg-white/5 px-2 py-1 rounded border border-white/5">
-            Last updated: {lastUpdated}s ago
-          </p>
+          <div className="flex items-center gap-2">
+             <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
+               Real-time Feed
+             </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-          <LogTable logs={mockLogs} />
+          <LogTable logs={logs} />
           <AIInsightPanel insight={mockInsight} />
         </div>
       </main>

@@ -5,6 +5,9 @@ import { Incident } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { GitHubPRPanel } from './GitHubPRPanel';
 
+import { dashboardApi } from '@/services/api';
+import { toast } from 'sonner';
+
 interface IncidentModalProps {
   incident: Incident;
   onClose: () => void;
@@ -12,10 +15,21 @@ interface IncidentModalProps {
 
 export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose }) => {
   const [showPRPanel, setShowPRPanel] = useState(false);
-  const [isResolved, setIsResolved] = useState(incident.severity === 'resolved');
+  const [isResolved, setIsResolved] = useState(incident.status === 'resolved');
+  const [isResolving, setIsResolving] = useState(false);
 
-  const handleResolve = () => {
-    setIsResolved(true);
+  const handleResolve = async () => {
+    setIsResolving(true);
+    try {
+      await dashboardApi.resolveIncident(incident._id);
+      setIsResolved(true);
+      toast.success('Incident marked as resolved');
+      setTimeout(onClose, 1500); 
+    } catch (error) {
+      toast.error('Failed to resolve incident');
+    } finally {
+      setIsResolving(false);
+    }
   };
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -179,10 +193,13 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
                 View Logs
               </button>
               <button 
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all hover:scale-[1.02] shadow-lg shadow-blue-500/20"
+                onClick={handleResolve}
+                disabled={isResolving || isResolved}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-all hover:scale-[1.02] shadow-lg ${
+                  isResolved ? 'bg-green-600 shadow-green-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
+                } ${(isResolving || isResolved) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Mark as Resolved
+                {isResolving ? 'Resolving...' : isResolved ? 'Resolved' : 'Mark as Resolved'}
               </button>
             </div>
           </>

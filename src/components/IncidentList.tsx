@@ -16,7 +16,7 @@ export const IncidentList: React.FC<IncidentListProps> = ({ incidents }) => {
       <div className="grid grid-cols-1 gap-4">
         {incidents.filter(i => i.severity !== 'resolved').map((incident) => (
           <div 
-            key={incident.id} 
+            key={incident._id} 
             onClick={() => setSelectedIncident(incident)}
             className="bg-[#111827] border border-white/10 rounded-xl p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition hover:border-white/20"
           >
@@ -25,7 +25,7 @@ export const IncidentList: React.FC<IncidentListProps> = ({ incidents }) => {
               <div>
                 <p className="text-white font-medium">{incident.title}</p>
                 <p className="text-gray-400 text-sm">
-                  {incident.service} • {incident.totalEvents} events • Last seen {incident.lastSeen}
+                  {incident.service} • {incident.count} events • Last seen {incident.lastSeen}
                 </p>
               </div>
             </div>

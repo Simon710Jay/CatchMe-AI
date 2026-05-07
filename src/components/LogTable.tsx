@@ -27,7 +27,7 @@ export const LogTable: React.FC<LogTableProps> = ({ logs }) => {
             <tbody className="divide-y divide-white/5">
               {logs.map((log) => (
                 <tr 
-                  key={log.id} 
+                  key={log._id} 
                   className="hover:bg-white/5 cursor-pointer transition-all duration-200 group active:bg-white/10"
                 >
                   <td className="px-4 py-4 text-sm text-gray-400 whitespace-nowrap">

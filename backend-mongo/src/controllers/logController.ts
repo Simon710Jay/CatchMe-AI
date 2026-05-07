@@ -4,6 +4,7 @@ import { LogSchema } from '../validators/logValidator';
 import { IncidentGroupingService } from '../services/incidentGroupingService';
 import { broadcast } from '../websocket/socket';
 import { logger } from '../logger/logger';
+import { parse } from 'json2csv';
 
 export const logController = {
   create: async (request: FastifyRequest, reply: FastifyReply) => {
@@ -20,7 +21,7 @@ export const logController = {
       broadcast('new-log', log);
 
       // Trigger incident grouping
-      await IncidentGroupingService.groupLogIntoIncident(log._id as string);
+      await IncidentGroupingService.groupLogIntoIncident((log._id as any).toString());
 
       return reply.status(201).send({
         success: true,
@@ -56,5 +57,28 @@ export const logController = {
       success: true,
       data: logs,
     });
+  },
+
+  exportLogs: async (request: FastifyRequest, reply: FastifyReply) => {
+    const { format } = request.query as { format?: string };
+    try {
+      const logs = await Log.find().lean();
+
+      if (format === 'csv') {
+        const fields = ['_id', 'message', 'service', 'severity', 'timestamp', 'statusCode', 'endpoint'];
+        const csv = parse(logs, { fields });
+        reply.header('Content-Type', 'text/csv');
+        reply.header('Content-Disposition', 'attachment; filename=logs.csv');
+        return reply.send(csv);
+      }
+
+      return reply.send({
+        success: true,
+        data: logs,
+      });
+    } catch (error: any) {
+      logger.error(`Log export error: ${error.message}`);
+      throw error;
+    }
   },
 };
