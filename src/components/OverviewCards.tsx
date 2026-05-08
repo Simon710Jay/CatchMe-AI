@@ -1,8 +1,8 @@
 import React from 'react';
-import { SystemMetrics } from '@/types';
+import { DashboardSummary } from '@/types';
 
 interface OverviewCardsProps {
-  metrics: SystemMetrics;
+  metrics: DashboardSummary;
 }
 
 export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
@@ -38,8 +38,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-white">{metrics.errors}</span>
-          <span className="text-sm font-medium text-warning">+12%</span>
+          <span className="text-3xl font-bold text-white">{metrics.totalErrors}</span>
         </div>
       </div>
 
@@ -55,8 +54,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-white">{metrics.responseTimeMs}ms</span>
-          <span className="text-sm font-medium text-resolved">-5%</span>
+          <span className="text-3xl font-bold text-white">{Math.round(metrics.avgResponseTime)}ms</span>
         </div>
       </div>
 
@@ -71,7 +69,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ metrics }) => {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-white">{metrics.healthPercentage}%</span>
+          <span className="text-3xl font-bold text-white">{Math.round(metrics.systemHealth)}%</span>
         </div>
       </div>
     </div>

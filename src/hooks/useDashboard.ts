@@ -9,7 +9,8 @@ export const useDashboard = () => {
     setLogs, addLog, 
     setIncidents, addIncident, updateIncident,
     setNotifications, addNotification, updateNotification,
-    setSummary,
+    setAIAnalysis,
+    setSummary, setHealthHistory, addHealthPoint, setErrorDistribution,
     setConnected 
   } = useStore();
 
@@ -17,16 +18,20 @@ export const useDashboard = () => {
     // 1. Initial Data Fetch
     const fetchData = async () => {
       try {
-        const [logsRes, incidentsRes, notificationsRes, summaryRes] = await Promise.all([
+        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes] = await Promise.all([
           dashboardApi.getLogs(),
           dashboardApi.getIncidents(),
           dashboardApi.getNotifications(),
           dashboardApi.getSummary(),
+          dashboardApi.getHealthHistory(),
+          dashboardApi.getErrorDistribution()
         ]);
         setLogs(logsRes.data);
         setIncidents(incidentsRes.data);
         setNotifications(notificationsRes.data);
         setSummary(summaryRes.data);
+        setHealthHistory(historyRes.data);
+        setErrorDistribution(distributionRes.data);
       } catch (error) {
         console.error('Failed to fetch initial dashboard data:', error);
       }
@@ -75,6 +80,29 @@ export const useDashboard = () => {
       updateNotification(notification);
     });
 
+    socket.on('ai-analysis-completed', ({ incidentId, analysis }) => {
+      setAIAnalysis(incidentId, analysis);
+      toast.info('AI Diagnosis Available', {
+        description: `Deep analysis completed for incident: ${incidentId.slice(-6)}`,
+      });
+    });
+
+    socket.on('metrics-updated', (metric) => {
+      setSummary({
+        activeIncidents: metric.activeIncidents,
+        totalErrors: metric.totalErrors,
+        avgResponseTime: metric.responseTime,
+        systemHealth: metric.healthScore
+      });
+      addHealthPoint({
+        timestamp: metric.timestamp,
+        healthScore: metric.healthScore,
+        cpuUsage: metric.cpuUsage,
+        memoryUsage: metric.memoryUsage,
+        responseTime: metric.responseTime
+      });
+    });
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
@@ -92,6 +120,8 @@ export const useDashboard = () => {
     incidents: useStore((state) => state.incidents),
     notifications: useStore((state) => state.notifications),
     summary: useStore((state) => state.summary),
+    healthHistory: useStore((state) => state.healthHistory),
+    errorDistribution: useStore((state) => state.errorDistribution),
     isConnected: useStore((state) => state.isConnected),
   };
 };

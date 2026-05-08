@@ -24,12 +24,6 @@ export const Navbar: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3 md:gap-6">
-          <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-            <span className={`${isConnected ? 'text-green-400' : 'text-red-400'} text-sm font-medium`}>
-              {isConnected ? 'Live' : 'Disconnected'}
-            </span>
-          </div>
           
           <div className="relative">
             <button 

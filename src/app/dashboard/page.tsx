@@ -8,87 +8,29 @@ import { AIInsightPanel } from '@/components/AIInsightPanel';
 import { SystemHealthCharts } from '@/components/SystemHealthCharts';
 import { IncidentList } from '@/components/IncidentList';
 import { useDashboard } from '@/hooks/useDashboard';
-import { Log, SystemMetrics, AIInsight, Incident } from '@/types';
-
-// Mock Data
-const mockMetrics: SystemMetrics = {
-  activeIncidents: 3,
-  errors: 142,
-  responseTimeMs: 245,
-  healthPercentage: 92
-};
-
-const mockLogs: Log[] = [
-  {
-    id: '1',
-    timestamp: '2026-05-05 19:42:01',
-    service: 'payment-gateway',
-    message: 'Connection timeout to Stripe API',
-    severity: 'critical'
-  },
-  {
-    id: '2',
-    timestamp: '2026-05-05 19:40:15',
-    service: 'auth-service',
-    message: 'High latency detected in token validation',
-    severity: 'warning'
-  },
-  {
-    id: '3',
-    timestamp: '2026-05-05 19:35:22',
-    service: 'user-db',
-    message: 'Replication lag cleared, DB synced',
-    severity: 'resolved'
-  },
-  {
-    id: '4',
-    timestamp: '2026-05-05 19:30:10',
-    service: 'payment-gateway',
-    message: 'Rate limit exceeded for client IP',
-    severity: 'warning'
-  },
-  {
-    id: '5',
-    timestamp: '2026-05-05 19:15:05',
-    service: 'email-worker',
-    message: 'Job queue processing normally',
-    severity: 'resolved'
-  }
-];
-
-const mockInsight: AIInsight = {
-  issue: 'Stripe API Connection Timeouts',
-  severity: 'critical',
-  probableCause: 'Network packet loss between primary AWS region and Stripe edge nodes. Anomalous traffic spikes identified prior to failure.',
-  impact: 'Payment processing is currently failing for ~15% of transactions. Potential revenue loss if not addressed within 1 hour.',
-  recommendedFix: '1. Switch payment routing to secondary region (EU-Central-1)\n2. Implement exponential backoff for failed retries\n3. Alert billing team to monitor failed transactions'
-};
-
-const mockIncidents: Incident[] = [
-  {
-    id: 'inc-1',
-    title: 'Stripe API Connection Failures',
-    service: 'payment-gateway',
-    severity: 'critical',
-    totalEvents: 42,
-    firstSeen: '2026-05-05 18:30:00',
-    lastSeen: '2026-05-05 19:42:01',
-    logs: [mockLogs[0], mockLogs[3]]
-  },
-  {
-    id: 'inc-2',
-    title: 'High Latency in Auth Service',
-    service: 'auth-service',
-    severity: 'warning',
-    totalEvents: 128,
-    firstSeen: '2026-05-05 19:00:00',
-    lastSeen: '2026-05-05 19:40:15',
-    logs: [mockLogs[1]]
-  }
-];
+import { useStore } from '@/store/useStore';
 
 export default function DashboardPage() {
-  const { logs, incidents, notifications, summary, isConnected } = useDashboard();
+  const { logs, incidents, summary, isConnected } = useDashboard();
+  const { aiAnalyses } = useStore();
+
+  // Get the latest available AI analysis
+  const latestIncidentWithAnalysis = [...incidents]
+    .sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime())
+    .find(inc => aiAnalyses[inc._id]);
+  
+  const latestAnalysis = latestIncidentWithAnalysis ? aiAnalyses[latestIncidentWithAnalysis._id] : null;
+
+  if (!summary) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-medium animate-pulse">Initializing Observability Feed...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--background)]">
@@ -127,12 +69,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <OverviewCards metrics={{
-          activeIncidents: summary?.activeIncidents || 0,
-          errors: summary?.criticalLogs || 0,
-          responseTimeMs: summary?.responseTimeMs || 0,
-          healthPercentage: summary?.healthPercentage || 0
-        }} />
+        <OverviewCards metrics={summary} />
         
         <SystemHealthCharts />
 
@@ -149,7 +86,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           <LogTable logs={logs} />
-          <AIInsightPanel insight={mockInsight} />
+          <AIInsightPanel analysis={latestAnalysis} />
         </div>
       </main>
     </div>

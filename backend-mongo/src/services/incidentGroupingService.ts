@@ -3,6 +3,7 @@ import Log from '../models/Log';
 import { broadcast } from '../websocket/socket';
 import { logger } from '../logger/logger';
 import { NotificationService } from './notificationService';
+import { queueAIAnalysis } from '../queue/aiQueue';
 
 export class IncidentGroupingService {
   static async groupLogIntoIncident(logId: string) {
@@ -32,6 +33,9 @@ export class IncidentGroupingService {
             severity: incident.severity,
             relatedIncidentId: incident._id,
           });
+          
+          // Re-analyze on escalation
+          await queueAIAnalysis((incident._id as any).toString());
         }
 
         broadcast('incident-updated', incident);
@@ -53,6 +57,9 @@ export class IncidentGroupingService {
           severity: incident.severity,
           relatedIncidentId: incident._id,
         });
+
+        // Trigger AI Analysis for new incident
+        await queueAIAnalysis((incident._id as any).toString());
 
         broadcast('incident-created', incident);
         logger.info(`Created new incident: ${incident._id}`);

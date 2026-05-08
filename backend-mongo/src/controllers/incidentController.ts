@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import Incident from '../models/Incident';
+import AIAnalysis from '../models/AIAnalysis';
 import { logger } from '../logger/logger';
 import { broadcast } from '../websocket/socket';
 import { parse } from 'json2csv';
@@ -96,6 +97,29 @@ export const incidentController = {
       });
     } catch (error: any) {
       logger.error(`Incident export error: ${error.message}`);
+      throw error;
+    }
+  },
+
+  getAnalysis: async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const analysis = await AIAnalysis.findOne({ incidentId: id })
+        .sort({ createdAt: -1 });
+
+      if (!analysis) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'AI Analysis not found for this incident' },
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: analysis,
+      });
+    } catch (error: any) {
+      logger.error(`Get analysis error: ${error.message}`);
       throw error;
     }
   },

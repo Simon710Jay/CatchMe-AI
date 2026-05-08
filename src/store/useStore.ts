@@ -4,8 +4,10 @@ import { Log, Incident, Notification, DashboardSummary } from '../types';
 interface DashboardState {
   logs: Log[];
   incidents: Incident[];
-  notifications: Notification[];
+  aiAnalyses: Record<string, AIAnalysis>;
   summary: DashboardSummary | null;
+  healthHistory: HealthHistoryPoint[];
+  errorDistribution: ErrorDistribution | null;
   isConnected: boolean;
   
   setLogs: (logs: Log[]) => void;
@@ -16,7 +18,11 @@ interface DashboardState {
   setNotifications: (notifications: Notification[]) => void;
   addNotification: (notification: Notification) => void;
   updateNotification: (notification: Notification) => void;
+  setAIAnalysis: (incidentId: string, analysis: AIAnalysis) => void;
   setSummary: (summary: DashboardSummary) => void;
+  setHealthHistory: (history: HealthHistoryPoint[]) => void;
+  addHealthPoint: (point: HealthHistoryPoint) => void;
+  setErrorDistribution: (distribution: ErrorDistribution) => void;
   setConnected: (status: boolean) => void;
 }
 
@@ -24,7 +30,10 @@ export const useStore = create<DashboardState>((set) => ({
   logs: [],
   incidents: [],
   notifications: [],
+  aiAnalyses: {},
   summary: null,
+  healthHistory: [],
+  errorDistribution: null,
   isConnected: false,
   
   setLogs: (logs) => set({ logs }),
@@ -54,7 +63,19 @@ export const useStore = create<DashboardState>((set) => ({
     )
   })),
 
+  setAIAnalysis: (incidentId, analysis) => set((state) => ({
+    aiAnalyses: { ...state.aiAnalyses, [incidentId]: analysis }
+  })),
+
   setSummary: (summary) => set({ summary }),
+
+  setHealthHistory: (history) => set({ healthHistory: history }),
+
+  addHealthPoint: (point) => set((state) => ({
+    healthHistory: [...state.healthHistory.slice(-23), point]
+  })),
+
+  setErrorDistribution: (distribution) => set({ errorDistribution: distribution }),
   
   setConnected: (status) => set({ isConnected: status }),
 }));

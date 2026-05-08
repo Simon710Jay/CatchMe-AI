@@ -5,8 +5,11 @@ import logRoutes from './routes/logRoutes';
 import incidentRoutes from './routes/incidentRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import metricsRoutes from './routes/metricsRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
+import './queue/workers/aiWorker';
+import { SystemMetricsCollector } from './metrics/systemMetricsCollector';
 
 const app = fastify({
   logger: {
@@ -37,6 +40,7 @@ app.register(logRoutes, { prefix: '/api' });
 app.register(incidentRoutes, { prefix: '/api' });
 app.register(notificationRoutes, { prefix: '/api' });
 app.register(dashboardRoutes, { prefix: '/api' });
+app.register(metricsRoutes, { prefix: '/api' });
 
 // Health Check
 app.get('/health', async () => {
@@ -44,6 +48,9 @@ app.get('/health', async () => {
 });
 
 export const startApp = async () => {
+  // Start Background Services
+  SystemMetricsCollector.start();
+  
   // Initialize WebSocket after the server starts listening
   initSocket(app);
   return app;

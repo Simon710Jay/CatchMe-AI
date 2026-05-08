@@ -41,7 +41,22 @@ export const dashboardApi = {
   },
 
   getSummary: async () => {
-    const response = await api.get('/dashboard/summary');
+    const response = await api.get('/dashboard/metrics');
+    return response.data;
+  },
+
+  getHealthHistory: async () => {
+    const response = await api.get('/metrics/health-history');
+    return response.data;
+  },
+
+  getErrorDistribution: async () => {
+    const response = await api.get('/metrics/error-distribution');
+    return response.data;
+  },
+
+  getAIAnalysis: async (incidentId: string) => {
+    const response = await api.get(`/incidents/${incidentId}/analysis`);
     return response.data;
   },
 };

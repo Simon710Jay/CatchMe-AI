@@ -48,10 +48,32 @@ export interface Notification {
 
 export interface DashboardSummary {
   activeIncidents: number;
-  criticalIncidents: number;
-  totalLogs: number;
-  criticalLogs: number;
-  resolvedIncidents: number;
-  healthPercentage: number;
-  responseTimeMs: number;
+  totalErrors: number;
+  avgResponseTime: number;
+  systemHealth: number;
+}
+
+export interface HealthHistoryPoint {
+  timestamp: string;
+  healthScore: number;
+  cpuUsage: number;
+  memoryUsage: number;
+  responseTime: number;
+}
+
+export interface ErrorDistribution {
+  critical: number;
+  warning: number;
+  resolved: number;
+}
+
+export interface AIAnalysis {
+  _id: string;
+  incidentId: string;
+  probableCause: string;
+  impactAssessment: string;
+  recommendedAction: string;
+  confidence: number;
+  severity: Severity;
+  createdAt: string;
 }
