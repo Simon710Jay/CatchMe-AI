@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Log, Incident, Notification, DashboardSummary } from '../types';
+import { Log, Incident, Notification, DashboardSummary, AIAnalysis, HealthHistoryPoint, ErrorDistribution } from '../types';
 
 interface DashboardState {
   logs: Log[];
@@ -9,6 +9,7 @@ interface DashboardState {
   healthHistory: HealthHistoryPoint[];
   errorDistribution: ErrorDistribution | null;
   isConnected: boolean;
+  notifications: Notification[];
   
   setLogs: (logs: Log[]) => void;
   addLog: (log: Log) => void;

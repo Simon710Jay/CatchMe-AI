@@ -80,7 +80,7 @@ export const GitHubPRPanel: React.FC<GitHubPRPanelProps> = ({ incident, onClose,
         <div className="space-y-2">
           <p className="text-sm text-gray-300 font-bold underline decoration-blue-500/30">Issue Overview</p>
           <p className="text-xs text-gray-400 leading-relaxed">
-            Automated fix for {incident.title}. Resolved {incident.totalEvents} events triggering since {incident.firstSeen}.
+            Automated fix for {incident.title}. Resolved {incident.count} events triggering since {incident.lastSeen || 'recently'}.
           </p>
           <p className="text-sm text-gray-300 font-bold underline decoration-green-500/30 pt-2">Proposed Fix</p>
           <p className="text-xs text-gray-400 leading-relaxed">

@@ -33,6 +33,7 @@ export interface Incident {
   severity: Severity;
   count: number;
   status: string;
+  lastSeen: string;
   logs?: Log[];
 }
 

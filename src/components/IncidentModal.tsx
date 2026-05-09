@@ -90,12 +90,9 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
               </div>
               <div className="bg-white/5 p-3 rounded-xl border border-white/5">
                 <p className="text-xs uppercase tracking-wider mb-1">Total Events</p>
-                <p className="text-white font-medium">{incident.totalEvents} triggers</p>
+                <p className="text-white font-medium">{incident.count} triggers</p>
               </div>
-              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                <p className="text-xs uppercase tracking-wider mb-1">First Seen</p>
-                <p className="text-white font-medium">{incident.firstSeen}</p>
-              </div>
+
               <div className="bg-white/5 p-3 rounded-xl border border-white/5">
                 <p className="text-xs uppercase tracking-wider mb-1">Last Seen</p>
                 <p className="text-white font-medium">{incident.lastSeen}</p>
@@ -106,8 +103,8 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
             <div className="mb-8">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Grouped Logs</h3>
               <div className="max-h-[250px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                {incident.logs.map((log) => (
-                  <div key={log.id} className="bg-black/30 p-3 rounded-lg text-sm flex justify-between items-center border border-white/5">
+                {incident.logs?.map((log) => (
+                  <div key={log._id} className="bg-black/30 p-3 rounded-lg text-sm flex justify-between items-center border border-white/5">
                     <div className="flex flex-col gap-1">
                       <p className="text-gray-200 font-medium">{log.message}</p>
                       <p className="text-gray-500 text-xs">{log.timestamp}</p>
