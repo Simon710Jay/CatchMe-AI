@@ -68,13 +68,29 @@ export interface ErrorDistribution {
   resolved: number;
 }
 
+export type AIStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
 export interface AIAnalysis {
   _id: string;
   incidentId: string;
+  status: AIStatus;
   probableCause: string;
   impactAssessment: string;
   recommendedAction: string;
   confidence: number;
   severity: Severity;
   createdAt: string;
+}
+
+export type PRStatus = 'draft' | 'open' | 'review_requested' | 'approved' | 'merged' | 'closed' | 'failed';
+
+export interface GitHubPR {
+  id?: string;
+  incidentId: string;
+  prNumber?: number;
+  branchName: string;
+  prUrl?: string;
+  status: PRStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }

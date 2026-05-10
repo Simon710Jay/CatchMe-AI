@@ -179,8 +179,17 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
                       onClick={() => setShowPRPanel(true)}
                       className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-md transition-all shadow-lg shadow-green-500/10 flex items-center gap-2"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5"/><path d="m15 12-8.5-8.5"/><path d="M19 12H15"/></svg>
-                      Create Pull Request
+                      {useStore((state) => state.pullRequests)[incident._id] ? (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5"/><path d="m15 12-8.5-8.5"/><path d="M19 12H15"/></svg>
+                          View Pull Request
+                        </>
+                      ) : (
+                        <>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5"/><path d="m15 12-8.5-8.5"/><path d="M19 12H15"/></svg>
+                          Create Pull Request
+                        </>
+                      )}
                     </button>
                     <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold rounded-md border border-white/10 transition-all">
                       Review

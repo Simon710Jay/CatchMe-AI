@@ -59,4 +59,14 @@ export const dashboardApi = {
     const response = await api.get(`/incidents/${incidentId}/analysis`);
     return response.data;
   },
+
+  createPR: async (incidentId: string) => {
+    const response = await api.post('/github/create-pr', { incidentId });
+    return response.data;
+  },
+
+  getPullRequests: async () => {
+    const response = await api.get('/github/pull-requests');
+    return response.data;
+  },
 };

@@ -1,10 +1,12 @@
 import { create } from 'zustand';
-import { Log, Incident, Notification, DashboardSummary, AIAnalysis, HealthHistoryPoint, ErrorDistribution } from '../types';
+import { Log, Incident, Notification, DashboardSummary, AIAnalysis, AIStatus, HealthHistoryPoint, ErrorDistribution, GitHubPR } from '../types';
 
 interface DashboardState {
   logs: Log[];
   incidents: Incident[];
   aiAnalyses: Record<string, AIAnalysis>;
+  aiStatuses: Record<string, AIStatus>;
+  pullRequests: Record<string, GitHubPR>;
   summary: DashboardSummary | null;
   healthHistory: HealthHistoryPoint[];
   errorDistribution: ErrorDistribution | null;
@@ -20,6 +22,9 @@ interface DashboardState {
   addNotification: (notification: Notification) => void;
   updateNotification: (notification: Notification) => void;
   setAIAnalysis: (incidentId: string, analysis: AIAnalysis) => void;
+  setAIStatus: (incidentId: string, status: AIStatus) => void;
+  setPullRequest: (incidentId: string, pr: GitHubPR) => void;
+  setPullRequests: (prs: Record<string, GitHubPR>) => void;
   setSummary: (summary: DashboardSummary) => void;
   setHealthHistory: (history: HealthHistoryPoint[]) => void;
   addHealthPoint: (point: HealthHistoryPoint) => void;
@@ -32,6 +37,8 @@ export const useStore = create<DashboardState>((set) => ({
   incidents: [],
   notifications: [],
   aiAnalyses: {},
+  aiStatuses: {},
+  pullRequests: {},
   summary: null,
   healthHistory: [],
   errorDistribution: null,
@@ -67,6 +74,16 @@ export const useStore = create<DashboardState>((set) => ({
   setAIAnalysis: (incidentId, analysis) => set((state) => ({
     aiAnalyses: { ...state.aiAnalyses, [incidentId]: analysis }
   })),
+
+  setAIStatus: (incidentId, status) => set((state) => ({
+    aiStatuses: { ...state.aiStatuses, [incidentId]: status }
+  })),
+
+  setPullRequest: (incidentId, pr) => set((state) => ({
+    pullRequests: { ...state.pullRequests, [incidentId]: pr }
+  })),
+
+  setPullRequests: (prs) => set({ pullRequests: prs }),
 
   setSummary: (summary) => set({ summary }),
 

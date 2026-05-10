@@ -10,6 +10,7 @@ export const useDashboard = () => {
     setIncidents, addIncident, updateIncident,
     setNotifications, addNotification, updateNotification,
     setAIAnalysis,
+    setPullRequests,
     setSummary, setHealthHistory, addHealthPoint, setErrorDistribution,
     setConnected 
   } = useStore();
@@ -18,13 +19,14 @@ export const useDashboard = () => {
     // 1. Initial Data Fetch
     const fetchData = async () => {
       try {
-        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes] = await Promise.all([
+        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes, prsRes] = await Promise.all([
           dashboardApi.getLogs(),
           dashboardApi.getIncidents(),
           dashboardApi.getNotifications(),
           dashboardApi.getSummary(),
           dashboardApi.getHealthHistory(),
-          dashboardApi.getErrorDistribution()
+          dashboardApi.getErrorDistribution(),
+          dashboardApi.getPullRequests()
         ]);
         setLogs(logsRes.data);
         setIncidents(incidentsRes.data);
@@ -32,6 +34,14 @@ export const useDashboard = () => {
         setSummary(summaryRes.data);
         setHealthHistory(historyRes.data);
         setErrorDistribution(distributionRes.data);
+        
+        if (prsRes.success && Array.isArray(prsRes.data)) {
+          const prRecord: Record<string, any> = {};
+          prsRes.data.forEach((pr: any) => {
+            prRecord[pr.incidentId] = pr;
+          });
+          setPullRequests(prRecord);
+        }
       } catch (error) {
         console.error('Failed to fetch initial dashboard data:', error);
       }
@@ -56,8 +66,18 @@ export const useDashboard = () => {
       addLog(log);
     });
 
+    const updateErrorDistribution = async () => {
+      try {
+        const res = await dashboardApi.getErrorDistribution();
+        useStore.getState().setErrorDistribution(res.data);
+      } catch (err) {
+        console.error('Failed to update error distribution', err);
+      }
+    };
+
     socket.on('incident-created', (incident) => {
       addIncident(incident);
+      updateErrorDistribution();
       toast.error(`New Incident: ${incident.title}`, {
         description: `Service: ${incident.service}`,
       });
@@ -65,10 +85,12 @@ export const useDashboard = () => {
 
     socket.on('incident-updated', (incident) => {
       updateIncident(incident);
+      updateErrorDistribution();
     });
 
     socket.on('incident-resolved', (incident) => {
       updateIncident(incident);
+      updateErrorDistribution();
       toast.success(`Incident Resolved: ${incident.title}`);
     });
 
@@ -80,10 +102,22 @@ export const useDashboard = () => {
       updateNotification(notification);
     });
 
-    socket.on('ai-analysis-completed', ({ incidentId, analysis }) => {
+    socket.on('ai-analysis-started', ({ incidentId, status }) => {
+      useStore.getState().setAIStatus(incidentId, status);
+    });
+
+    socket.on('ai-analysis-completed', ({ incidentId, status, analysis }) => {
       setAIAnalysis(incidentId, analysis);
+      useStore.getState().setAIStatus(incidentId, status);
       toast.info('AI Diagnosis Available', {
         description: `Deep analysis completed for incident: ${incidentId.slice(-6)}`,
+      });
+    });
+
+    socket.on('ai-analysis-failed', ({ incidentId, status, error }) => {
+      useStore.getState().setAIStatus(incidentId, status);
+      toast.error('AI Analysis Failed', {
+        description: error || 'Failed to analyze incident',
       });
     });
 
@@ -103,6 +137,20 @@ export const useDashboard = () => {
       });
     });
 
+    socket.on('pr-opened', (pr) => {
+      useStore.getState().setPullRequest(pr.incidentId, pr);
+      toast.success('Automated PR Created', {
+        description: `Draft PR #${pr.prNumber} opened on GitHub`,
+      });
+    });
+
+    socket.on('pr-status-updated', (pr) => {
+      useStore.getState().setPullRequest(pr.incidentId, pr);
+      toast.info('PR Status Updated', {
+        description: `PR #${pr.prNumber} is now ${pr.status}`,
+      });
+    });
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
@@ -112,6 +160,11 @@ export const useDashboard = () => {
       socket.off('incident-resolved');
       socket.off('notification-created');
       socket.off('notification-read');
+      socket.off('ai-analysis-started');
+      socket.off('ai-analysis-completed');
+      socket.off('ai-analysis-failed');
+      socket.off('pr-opened');
+      socket.off('pr-status-updated');
     };
   }, []);
 

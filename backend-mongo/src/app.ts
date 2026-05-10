@@ -6,6 +6,7 @@ import incidentRoutes from './routes/incidentRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import metricsRoutes from './routes/metricsRoutes';
+import githubRoutes from './github/githubRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
 import './queue/workers/aiWorker';
@@ -41,6 +42,7 @@ app.register(incidentRoutes, { prefix: '/api' });
 app.register(notificationRoutes, { prefix: '/api' });
 app.register(dashboardRoutes, { prefix: '/api' });
 app.register(metricsRoutes, { prefix: '/api' });
+app.register(githubRoutes, { prefix: '/api' });
 
 // Health Check
 app.get('/health', async () => {

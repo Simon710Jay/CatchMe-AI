@@ -30,7 +30,7 @@ export const SystemHealthCharts: React.FC = () => {
           <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
           System Health History
         </h3>
-        <div className="flex-1 w-full">
+        <div className="flex-1 w-full min-h-0">
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -85,8 +85,13 @@ export const SystemHealthCharts: React.FC = () => {
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
           Incident Distribution
         </h3>
-        <div className="flex-1 w-full">
-          {pieData.some(d => d.value > 0) ? (
+        <div className="flex-1 w-full min-h-0">
+          {!errorDistribution ? (
+            <div className="h-full flex items-center justify-center flex-col gap-2">
+              <div className="w-16 h-16 rounded-full border-4 border-white/5 border-t-blue-500 animate-spin" />
+              <p className="text-gray-500 text-sm">Calibrating incident metrics...</p>
+            </div>
+          ) : pieData.some(d => d.value > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -116,8 +121,11 @@ export const SystemHealthCharts: React.FC = () => {
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center flex-col gap-2">
-              <div className="w-16 h-16 rounded-full border-4 border-white/5 border-t-blue-500 animate-spin" />
-              <p className="text-gray-500 text-sm">Calibrating incident metrics...</p>
+              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <p className="text-green-400 text-sm font-medium">System 100% Healthy</p>
+              <p className="text-gray-500 text-xs">No incidents recorded.</p>
             </div>
           )}
         </div>
