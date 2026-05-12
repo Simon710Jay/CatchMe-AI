@@ -12,7 +12,12 @@ export const aiWorker = new Worker('ai-analysis', async (job: Job) => {
   
   try {
     const incident = await Incident.findById(incidentId);
-    if (!incident) return;
+    if (!incident) {
+      logger.error(`AI Worker: Incident ${incidentId} not found`);
+      return;
+    }
+
+    logger.info(`AI Worker: Starting analysis for incident ${incidentId}`);
 
     // Emit started event
     broadcast('ai-analysis-started', {
@@ -20,30 +25,16 @@ export const aiWorker = new Worker('ai-analysis', async (job: Job) => {
       status: 'processing' as AIStatus
     });
 
-    const analysis = await AIService.analyzeIncident(incident);
+    const analysis = await AIService.analyzeIncident(incidentId, incident);
     
-    if (!analysis) {
-      throw new Error("Analysis failed to produce a result");
-    }
-
-    // Store analysis result
-    const aiRecord = await AIAnalysis.findOneAndUpdate(
-      { incidentId },
-      {
-        ...analysis,
-        rawResponse: JSON.stringify(analysis),
-      },
-      { upsert: true, new: true }
-    );
-
     // Emit event to frontend
     broadcast('ai-analysis-completed', {
       incidentId,
       status: 'completed' as AIStatus,
-      analysis: aiRecord
+      analysis: analysis
     });
 
-    logger.info(`AI Worker successfully processed incident: ${incidentId}`);
+    logger.info(`AI Worker: Successfully processed incident: ${incidentId}`);
   } catch (error: any) {
     logger.error(`AI Worker error for incident ${incidentId}: ${error.message}`);
     

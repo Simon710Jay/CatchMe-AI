@@ -35,6 +35,20 @@ export const useDashboard = () => {
         setHealthHistory(historyRes.data);
         setErrorDistribution(distributionRes.data);
         
+        // Fetch latest AI analysis if available
+        if (incidentsRes.data && incidentsRes.data.length > 0) {
+          const latestIncident = incidentsRes.data[0];
+          try {
+            const analysisRes = await dashboardApi.getAIAnalysis(latestIncident._id);
+            if (analysisRes.success && analysisRes.data) {
+              setAIAnalysis(latestIncident._id, analysisRes.data);
+              useStore.getState().setAIStatus(latestIncident._id, analysisRes.data.status || 'completed');
+            }
+          } catch (err) {
+            // Might not have analysis yet, which is fine
+          }
+        }
+        
         if (prsRes.success && Array.isArray(prsRes.data)) {
           const prRecord: Record<string, any> = {};
           prsRes.data.forEach((pr: any) => {

@@ -7,19 +7,27 @@ export interface IAIAnalysis extends Document {
   recommendedAction: string;
   confidence: number;
   severity: string;
+  analyzedLogs: string;
   rawResponse: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   createdAt: Date;
   updatedAt: Date;
 }
 
 const AIAnalysisSchema: Schema = new Schema({
   incidentId: { type: Schema.Types.ObjectId, ref: 'Incident', required: true, index: true },
-  probableCause: { type: String, required: true },
-  impactAssessment: { type: String, required: true },
-  recommendedAction: { type: String, required: true },
-  confidence: { type: Number, required: true },
-  severity: { type: String, required: true },
-  rawResponse: { type: String, required: true },
+  probableCause: { type: String, required: false },
+  impactAssessment: { type: String, required: false },
+  recommendedAction: { type: String, required: false },
+  confidence: { type: Number, required: false },
+  severity: { type: String, required: false },
+  analyzedLogs: { type: String, required: false },
+  rawResponse: { type: String, required: false },
+  status: { 
+    type: String, 
+    enum: ['pending', 'processing', 'completed', 'failed'], 
+    default: 'pending' 
+  },
 }, { timestamps: true });
 
 export default mongoose.model<IAIAnalysis>('AIAnalysis', AIAnalysisSchema);

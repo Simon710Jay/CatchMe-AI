@@ -9,20 +9,25 @@ import { connectDB } from './database/connect';
 import { logger } from './logger/logger';
 
 const start = async () => {
-  try {
-    // 1. Connect to Database
-    await connectDB();
+  logger.info('🚀 Starting CatchMe AI Backend...');
+  
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 4000;
 
-    // 2. Start Server
-    const port = process.env.PORT ? parseInt(process.env.PORT) : 4000;
-    await app.listen({ port, host: '0.0.0.0' });
+  try {
+    // 1. Start Server First (so it doesn't block on DB)
+    const address = await app.listen({ port, host: '0.0.0.0' });
+    logger.info(`🌐 Server listening at ${address}`);
     
-    // 3. Initialize WebSocket
+    // 2. Initialize WebSocket & Background Services
     await startApp();
 
-    logger.info(`🚀 CatchMe AI Real-time Backend running at http://localhost:${port}`);
+    // 3. Connect to Database (Non-blocking)
+    connectDB().catch(err => {
+      logger.error(`⚠️ Continued without initial MongoDB connection: ${err.message}`);
+    });
+
   } catch (err: any) {
-    logger.error(`Failed to start server: ${err.message}`);
+    logger.error(`❌ Critical failure during startup: ${err.message}`);
     process.exit(1);
   }
 };

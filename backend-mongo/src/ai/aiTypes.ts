@@ -15,6 +15,6 @@ export interface AIJobPayload {
 export interface AIAnalysisEvent {
   incidentId: string;
   status: AIStatus;
-  analysis?: AIAnalysisResponse & { _id?: string; rawResponse?: string; createdAt?: string; updatedAt?: string };
+  analysis?: any; // Use any or specific DB model type
   error?: string;
 }
