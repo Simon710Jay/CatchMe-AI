@@ -10,7 +10,7 @@ export const logController = {
   create: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const logData = LogSchema.parse(request.body);
-      
+
       const log = new Log({
         ...logData,
         timestamp: logData.timestamp ? new Date(logData.timestamp) : new Date(),

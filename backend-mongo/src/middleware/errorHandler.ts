@@ -16,7 +16,9 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
   }
 
   const statusCode = error.statusCode || 500;
-  const message = statusCode === 500 ? 'Internal Server Error' : error.message;
+  const message = (statusCode === 500 && process.env.NODE_ENV !== 'development') 
+    ? 'Internal Server Error' 
+    : error.message;
 
   reply.status(statusCode).send({
     success: false,
