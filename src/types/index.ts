@@ -32,9 +32,26 @@ export interface Incident {
   service: string;
   severity: Severity;
   count: number;
-  status: string;
+  status: 'open' | 'resolved' | 'investigating' | 'pr_created' | 'failed';
+  workflowStatus: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  prCreated?: boolean;
+  prNumber?: number;
+  prUrl?: string;
   lastSeen: string;
+  createdAt: string;
+  updatedAt: string;
   logs?: Log[];
+}
+
+export interface IncidentTimelineEvent {
+  _id: string;
+  incidentId: string;
+  eventType: 'incident_created' | 'ai_analysis_started' | 'ai_analysis_completed' | 'pr_opened' | 'review_requested' | 'pr_approved' | 'incident_resolved' | 'investigation_started';
+  message: string;
+  metadata?: any;
+  createdAt: string;
 }
 
 export interface Notification {
@@ -52,6 +69,8 @@ export interface DashboardSummary {
   totalErrors: number;
   avgResponseTime: number;
   systemHealth: number;
+  criticalIncidents: number;
+  resolvedIncidents: number;
 }
 
 export interface HealthHistoryPoint {

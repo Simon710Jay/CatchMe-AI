@@ -2,19 +2,20 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import SystemMetric from '../models/SystemMetric';
 import Incident from '../models/Incident';
 import { logger } from '../logger/logger';
+import { StatsService } from '../services/statsService';
 
 export const metricsController = {
   getOverview: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const latestMetric = await SystemMetric.findOne().sort({ timestamp: -1 });
+      const stats = await StatsService.getDashboardStats();
       
       return reply.send({
         success: true,
         data: {
-          activeIncidents: latestMetric?.activeIncidents || 0,
-          totalErrors: latestMetric?.totalErrors || 0,
-          avgResponseTime: latestMetric?.responseTime || 0,
-          systemHealth: latestMetric?.healthScore || 100,
+          activeIncidents: stats?.activeIncidents || 0,
+          totalErrors: stats?.totalErrors || 0,
+          avgResponseTime: stats?.responseTime || 0,
+          systemHealth: stats?.healthScore || 100,
         },
       });
     } catch (error: any) {

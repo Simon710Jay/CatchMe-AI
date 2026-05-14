@@ -39,7 +39,7 @@ export const useDashboard = () => {
         if (incidentsRes.data && incidentsRes.data.length > 0) {
           const latestIncident = incidentsRes.data[0];
           try {
-            const analysisRes = await dashboardApi.getAIAnalysis(latestIncident._id);
+            const analysisRes = await dashboardApi.getIncidentAnalysis(latestIncident._id);
             if (analysisRes.success && analysisRes.data) {
               setAIAnalysis(latestIncident._id, analysisRes.data);
               useStore.getState().setAIStatus(latestIncident._id, analysisRes.data.status || 'completed');
@@ -140,7 +140,9 @@ export const useDashboard = () => {
         activeIncidents: metric.activeIncidents,
         totalErrors: metric.totalErrors,
         avgResponseTime: metric.responseTime,
-        systemHealth: metric.healthScore
+        systemHealth: metric.healthScore,
+        criticalIncidents: metric.criticalIncidents,
+        resolvedIncidents: metric.resolvedIncidents
       });
       addHealthPoint({
         timestamp: metric.timestamp,
@@ -148,6 +150,17 @@ export const useDashboard = () => {
         cpuUsage: metric.cpuUsage,
         memoryUsage: metric.memoryUsage,
         responseTime: metric.responseTime
+      });
+    });
+
+    socket.on('stats-updated', (stats) => {
+      setSummary({
+        activeIncidents: stats.activeIncidents,
+        totalErrors: stats.totalErrors,
+        avgResponseTime: stats.responseTime,
+        systemHealth: stats.healthScore,
+        criticalIncidents: stats.criticalIncidents,
+        resolvedIncidents: stats.resolvedIncidents
       });
     });
 
@@ -164,6 +177,10 @@ export const useDashboard = () => {
         description: `PR #${pr.prNumber} is now ${pr.status}`,
       });
     });
+    
+    socket.on('workflow-event-created', (event) => {
+      useStore.getState().addWorkflowEvent(event.incidentId, event);
+    });
 
     return () => {
       socket.off('connect');
@@ -177,8 +194,11 @@ export const useDashboard = () => {
       socket.off('ai-analysis-started');
       socket.off('ai-analysis-completed');
       socket.off('ai-analysis-failed');
+      socket.off('metrics-updated');
+      socket.off('stats-updated');
       socket.off('pr-opened');
       socket.off('pr-status-updated');
+      socket.off('workflow-event-created');
     };
   }, []);
 

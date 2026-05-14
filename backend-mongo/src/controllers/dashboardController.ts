@@ -1,43 +1,52 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import Log from '../models/Log';
-import Incident from '../models/Incident';
+import { StatsService } from '../services/statsService';
 import { logger } from '../logger/logger';
 
 export const dashboardController = {
   getSummary: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const [
-        totalLogs,
-        criticalLogs,
-        activeIncidents,
-        criticalIncidents,
-        resolvedIncidents,
-      ] = await Promise.all([
-        Log.countDocuments(),
-        Log.countDocuments({ severity: 'critical' }),
-        Incident.countDocuments({ status: 'open' }),
-        Incident.countDocuments({ status: 'open', severity: 'critical' }),
-        Incident.countDocuments({ status: 'resolved' }),
-      ]);
-
-      // Mocking some metrics for now
-      const healthPercentage = 100 - (criticalIncidents * 10);
-      const responseTimeMs = 245;
+      const stats = await StatsService.getDashboardStats();
+      
+      if (!stats) {
+        throw new Error('Failed to retrieve dashboard stats');
+      }
 
       return reply.send({
         success: true,
         data: {
-          activeIncidents,
-          criticalIncidents,
-          totalLogs,
-          criticalLogs,
-          resolvedIncidents,
-          healthPercentage: Math.max(0, healthPercentage),
-          responseTimeMs,
+          activeIncidents: stats.activeIncidents,
+          totalErrors: stats.totalErrors,
+          avgResponseTime: stats.responseTime,
+          systemHealth: stats.healthScore,
+          criticalIncidents: stats.criticalIncidents,
+          resolvedIncidents: stats.resolvedIncidents,
         },
       });
     } catch (error: any) {
       logger.error(`Dashboard summary error: ${error.message}`);
+      throw error;
+    }
+  },
+
+  getStats: async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const stats = await StatsService.getDashboardStats();
+      
+      if (!stats) {
+        throw new Error('Failed to retrieve dashboard stats');
+      }
+
+      return reply.send({
+        success: true,
+        data: {
+          activeIncidents: stats.activeIncidents,
+          totalErrors: stats.totalErrors,
+          resolvedIncidents: stats.resolvedIncidents,
+          criticalIncidents: stats.criticalIncidents,
+        },
+      });
+    } catch (error: any) {
+      logger.error(`Dashboard stats error: ${error.message}`);
       throw error;
     }
   },

@@ -3,99 +3,185 @@ import { logger } from '../logger/logger';
 import { PullRequestAutomation } from '../models/PullRequestAutomation';
 import { githubEvents } from './githubEvents';
 import { GitHubPR } from './githubTypes';
+import { sanitizeBranchName } from '../utils/sanitizeBranchName';
+import { WorkflowService } from '../services/workflowService';
 
 // Initialize Octokit lazily to allow testing and env var loading
 const getOctokit = () => {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
-    logger.warn('GITHUB_TOKEN is missing from environment variables');
+    logger.error('CRITICAL: GITHUB_TOKEN is missing from environment variables');
+    throw new Error('GITHUB_TOKEN not configured');
   }
   return new Octokit({ auth: token });
 };
 
 export const githubService = {
   async triggerSafeAutomation(incidentId: string): Promise<GitHubPR> {
+    logger.info(`[GITHUB] Starting remediation workflow for incident: ${incidentId}`);
+    
+    // 1. Validate Environment
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_REPO;
-    const defaultBranch = process.env.GITHUB_DEFAULT_BRANCH || 'main';
 
     if (!owner || !repo) {
-      throw new Error('GITHUB_OWNER or GITHUB_REPO is missing from environment variables');
+      logger.error('[GITHUB] GITHUB_OWNER or GITHUB_REPO is missing');
+      throw new Error('GitHub repository configuration missing (OWNER/REPO)');
     }
 
-    const octokit = getOctokit();
-    const branchName = `fix/incident-${incidentId}-${Date.now()}`;
-    const testFilePath = 'test.json';
-
-    logger.info(`Starting safe GitHub automation for incident: ${incidentId}`);
-
     try {
-      // 1. Get base branch reference
+      const octokit = getOctokit();
+      
+      // 2. Fetch Repository Metadata (Dynamic Default Branch)
+      logger.info(`[GITHUB] Fetching repository metadata for ${owner}/${repo}...`);
+      await WorkflowService.logEvent(incidentId, 'investigation_started', 'Repository metadata fetched');
+      const { data: repoData } = await octokit.rest.repos.get({
+        owner,
+        repo,
+      }).catch(err => {
+        logger.error(`[GITHUB] Failed to fetch repository metadata: ${err.message}`);
+        throw new Error(`Repository ${owner}/${repo} not found or inaccessible`);
+      });
+
+      const defaultBranch = repoData.default_branch;
+      logger.info(`[GITHUB] Detected default branch: ${defaultBranch}`);
+      await WorkflowService.logEvent(incidentId, 'investigation_started', `Default branch detected: ${defaultBranch}`);
+
+      // 3. Validate Default Branch Exists
+      logger.info(`[GITHUB] Validating default branch ${defaultBranch} existence...`);
+      const { data: branches } = await octokit.rest.repos.listBranches({
+        owner,
+        repo,
+      });
+
+      const branchExists = branches.some(b => b.name === defaultBranch);
+      if (!branchExists) {
+        logger.error(`[GITHUB] Default branch ${defaultBranch} not found in branch list`);
+        throw new Error(`Default branch '${defaultBranch}' not found in repository`);
+      }
+
+      // 4. Fetch Incident & AI Analysis
+      const Incident = require('../models/Incident').default;
+      const AIAnalysis = require('../models/AIAnalysis').default;
+
+      logger.info(`[GITHUB] Looking up incident ${incidentId}...`);
+      const incident = await Incident.findById(incidentId);
+      if (!incident) {
+        logger.error(`[GITHUB] Incident ${incidentId} not found`);
+        throw new Error('Incident not found in database');
+      }
+
+      const analysis = await AIAnalysis.findOne({ incidentId }).sort({ createdAt: -1 });
+      
+      // 5. Prepare Branch Name
+      const serviceSlug = sanitizeBranchName(incident.service || 'unknown');
+      const titleSlug = sanitizeBranchName(incident.title || 'fix').slice(0, 30);
+      const branchName = `fix/${serviceSlug}-${titleSlug}-${Date.now().toString().slice(-6)}`;
+      
+      logger.info(`[GITHUB] Generated remediation branch name: ${branchName}`);
+      await WorkflowService.logEvent(incidentId, 'investigation_started', 'Branch created');
+
+      // 6. Get Base Branch SHA
+      logger.info(`[GITHUB] Fetching ${defaultBranch} ref SHA...`);
       const { data: refData } = await octokit.rest.git.getRef({
         owner,
         repo,
         ref: `heads/${defaultBranch}`,
+      }).catch(err => {
+        logger.error(`[GITHUB] Failed to fetch base branch ref: ${err.message}`);
+        throw new Error(`Could not resolve ref for branch '${defaultBranch}'`);
       });
 
-      // 2. Create new branch
-      logger.info(`Creating branch ${branchName}...`);
+      // 7. Create New Branch
+      logger.info(`[GITHUB] Creating branch ${branchName}...`);
       await octokit.rest.git.createRef({
         owner,
         repo,
         ref: `refs/heads/${branchName}`,
         sha: refData.object.sha,
+      }).catch(err => {
+        logger.error(`[GITHUB] Failed to create branch: ${err.message}`);
+        throw new Error(`Failed to create branch: ${err.message}`);
       });
+      
+      // 8. CRITICAL: Add propagation delay
+      logger.info(`[GITHUB] Waiting 1.5s for branch propagation...`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // 3. Fetch existing test.json if it exists (need its SHA to update it)
-      let fileSha: string | undefined;
-      try {
-        const { data: fileData } = await octokit.rest.repos.getContent({
-          owner,
-          repo,
-          path: testFilePath,
-          ref: branchName,
-        });
-        if (!Array.isArray(fileData) && fileData.type === 'file') {
-          fileSha = fileData.sha;
-        }
-      } catch (err: any) {
-        if (err.status !== 404) {
-          throw err;
-        }
-      }
-
-      // 4. Update or create the test file securely (only safe files for MVP)
-      logger.info(`Modifying safe file ${testFilePath}...`);
+      // 9. Create/Update Safe File
+      const testFilePath = 'catchme-remediation-trace.json';
+      logger.info(`[GITHUB] Creating remediation log at ${testFilePath}...`);
+      
       const fileContent = JSON.stringify({
         generatedBy: 'CatchMe AI',
-        incidentId,
-        timestamp: new Date().toISOString(),
-        note: 'Safe test commit for MVP',
+        incident: {
+          id: incidentId,
+          title: incident.title,
+          service: incident.service
+        },
+        analysis: {
+          probableCause: analysis?.probableCause || 'N/A',
+          recommendedAction: analysis?.recommendedAction || 'N/A'
+        },
+        timestamp: new Date().toISOString()
       }, null, 2);
 
       await octokit.rest.repos.createOrUpdateFileContents({
         owner,
         repo,
         path: testFilePath,
-        message: `[CatchMe AI] Safe test modification for incident ${incidentId}`,
+        message: `[CatchMe AI] Remediation trace for incident ${incidentId}`,
         content: Buffer.from(fileContent).toString('base64'),
         branch: branchName,
-        sha: fileSha,
+      }).catch(err => {
+        logger.error(`[GITHUB] Failed to create file: ${err.message}`);
+        throw new Error(`Failed to create commit: ${err.message}`);
       });
 
-      // 5. Create Draft Pull Request
-      logger.info(`Opening draft Pull Request for branch ${branchName}...`);
+      await WorkflowService.logEvent(incidentId, 'investigation_started', 'Commit created');
+
+      // 10. Prepare PR Body
+      const prBody = `
+## 🚨 CatchMe AI: Automated Remediation PR
+
+This is an automated **draft** PR generated by CatchMe AI for incident **#${incidentId}**.
+
+### 🧠 AI Diagnostic Summary
+- **Incident**: ${incident.title}
+- **Service**: ${incident.service}
+- **Probable Cause**: ${analysis?.probableCause || 'No analysis data found'}
+- **Impact**: ${analysis?.impactAssessment || 'No impact assessment data found'}
+- **Confidence Score**: ${analysis ? Math.round(analysis.confidence * 100) : 0}%
+
+### 🛠️ Recommended Remediation
+> ${analysis?.recommendedAction || 'No automated recommendation available at this time.'}
+
+### 📝 Operational Changes
+- Automated remediation trace created at \`${testFilePath}\`.
+- Base branch: \`${defaultBranch}\`
+- Remediation branch: \`${branchName}\`
+
+---
+_Generated by CatchMe AI Ops Center. Please review before merging._
+`;
+
+      // 11. Create Pull Request
+      logger.info(`[GITHUB] Opening draft Pull Request on base: ${defaultBranch}...`);
       const { data: prData } = await octokit.rest.pulls.create({
         owner,
         repo,
-        title: `[CatchMe AI] Suggested Fix for Incident #${incidentId}`,
+        title: `[FIX] ${incident.service}: ${incident.title}`,
         head: branchName,
         base: defaultBranch,
-        body: `## CatchMe AI Automated Pull Request\n\nThis is an automated **draft** PR generated by the CatchMe AI automation system for incident **#${incidentId}**.\n\n### Changes\n- Safely updated \`${testFilePath}\` to verify GitHub integration.\n\n_Note: This is a safe MVP implementation. No production files were modified._`,
+        body: prBody,
         draft: true,
+      }).catch(err => {
+        logger.error(`[GITHUB] Failed to create PR: ${err.message}`);
+        throw new Error(`GitHub PR creation failed: ${err.message}`);
       });
 
-      // 6. Save PR Metadata
+      // 12. Persist Metadata
+      logger.info(`[GITHUB] PR #${prData.number} created. Saving metadata...`);
       const prRecord = await PullRequestAutomation.create({
         incidentId,
         prNumber: prData.number,
@@ -111,15 +197,17 @@ export const githubService = {
         branchName: prRecord.branchName,
         prUrl: prRecord.prUrl,
         status: prRecord.status,
+        defaultBranch: defaultBranch,
       };
 
-      // 7. Broadcast via WebSocket
+      // 13. Notify & Return
       githubEvents.emitPROpened(result);
-      logger.info(`GitHub automation completed successfully for PR #${prData.number}`);
+      logger.info(`[GITHUB] Remediation workflow successful for PR #${prData.number}`);
 
       return result;
     } catch (error: any) {
-      logger.error(`GitHub automation failed: ${error.message}`);
+      logger.error(`[GITHUB] Workflow FAILED for incident ${incidentId}: ${error.message}`);
+      await WorkflowService.logEvent(incidentId, 'incident_failed', `GitHub automation failed: ${error.message}`);
       throw error;
     }
   },

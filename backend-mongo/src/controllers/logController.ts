@@ -5,6 +5,7 @@ import { IncidentGroupingService } from '../services/incidentGroupingService';
 import { broadcast } from '../websocket/socket';
 import { logger } from '../logger/logger';
 import { parse } from 'json2csv';
+import { StatsService } from '../services/statsService';
 
 export const logController = {
   create: async (request: FastifyRequest, reply: FastifyReply) => {
@@ -22,6 +23,9 @@ export const logController = {
 
       // Trigger incident grouping
       await IncidentGroupingService.groupLogIntoIncident((log._id as any).toString());
+
+      // Update dashboard stats
+      StatsService.broadcastStats();
 
       return reply.status(201).send({
         success: true,

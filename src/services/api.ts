@@ -26,8 +26,20 @@ export const dashboardApi = {
     return response.data;
   },
 
+  getIncidentAnalysis: async (id: string) => {
+    const response = await api.get(`/incidents/${id}/analysis`);
+    return response.data;
+  },
   resolveIncident: async (id: string) => {
     const response = await api.patch(`/incidents/${id}/resolve`);
+    return response.data;
+  },
+  createPR: async (id: string) => {
+    const response = await api.post(`/incidents/${id}/create-pr`);
+    return response.data;
+  },
+  getTimeline: async (id: string) => {
+    const response = await api.get(`/incidents/${id}/timeline`);
     return response.data;
   },
 
@@ -42,7 +54,12 @@ export const dashboardApi = {
   },
 
   getSummary: async () => {
-    const response = await api.get('/dashboard/metrics');
+    const response = await api.get('/dashboard/summary');
+    return response.data;
+  },
+  
+  getStats: async () => {
+    const response = await api.get('/dashboard/stats');
     return response.data;
   },
 
@@ -53,16 +70,6 @@ export const dashboardApi = {
 
   getErrorDistribution: async () => {
     const response = await api.get('/metrics/error-distribution');
-    return response.data;
-  },
-
-  getAIAnalysis: async (incidentId: string) => {
-    const response = await api.get(`/incidents/${incidentId}/analysis`);
-    return response.data;
-  },
-
-  createPR: async (incidentId: string) => {
-    const response = await api.post('/github/create-pr', { incidentId });
     return response.data;
   },
 

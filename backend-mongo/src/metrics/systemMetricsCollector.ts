@@ -22,7 +22,8 @@ export class SystemMetricsCollector {
       // 2. Collect Application Stats
       const activeIncidents = await Incident.countDocuments({ status: { $ne: 'resolved' } });
       const criticalIncidents = await Incident.countDocuments({ status: { $ne: 'resolved' }, severity: 'critical' });
-      const totalErrors = await Log.countDocuments({ severity: 'critical' });
+      const resolvedIncidents = await Incident.countDocuments({ status: 'resolved' });
+      const totalErrors = await Log.countDocuments({ severity: { $in: ['critical', 'warning', 'error', 'failed'] } });
       
       // 3. Calculate Health Score
       const healthScore = this.calculateHealthScore({
@@ -42,6 +43,8 @@ export class SystemMetricsCollector {
         responseTime,
         healthScore,
         activeIncidents,
+        criticalIncidents,
+        resolvedIncidents,
         totalErrors,
       });
       await metric.save();

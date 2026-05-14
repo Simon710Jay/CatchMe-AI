@@ -12,6 +12,7 @@ interface DashboardState {
   errorDistribution: ErrorDistribution | null;
   isConnected: boolean;
   notifications: Notification[];
+  workflowEvents: Record<string, IncidentTimelineEvent[]>;
   
   setLogs: (logs: Log[]) => void;
   addLog: (log: Log) => void;
@@ -30,6 +31,8 @@ interface DashboardState {
   addHealthPoint: (point: HealthHistoryPoint) => void;
   setErrorDistribution: (distribution: ErrorDistribution) => void;
   setConnected: (status: boolean) => void;
+  setWorkflowEvents: (incidentId: string, events: IncidentTimelineEvent[]) => void;
+  addWorkflowEvent: (incidentId: string, event: IncidentTimelineEvent) => void;
 }
 
 export const useStore = create<DashboardState>((set) => ({
@@ -43,6 +46,7 @@ export const useStore = create<DashboardState>((set) => ({
   healthHistory: [],
   errorDistribution: null,
   isConnected: false,
+  workflowEvents: {},
   
   setLogs: (logs) => set({ logs }),
   addLog: (log) => set((state) => ({ 
@@ -96,4 +100,15 @@ export const useStore = create<DashboardState>((set) => ({
   setErrorDistribution: (distribution) => set({ errorDistribution: distribution }),
   
   setConnected: (status) => set({ isConnected: status }),
+
+  setWorkflowEvents: (incidentId, events) => set((state) => ({
+    workflowEvents: { ...state.workflowEvents, [incidentId]: events }
+  })),
+
+  addWorkflowEvent: (incidentId, event) => set((state) => ({
+    workflowEvents: { 
+      ...state.workflowEvents, 
+      [incidentId]: [...(state.workflowEvents[incidentId] || []), event] 
+    }
+  })),
 }));

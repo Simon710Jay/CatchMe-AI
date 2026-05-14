@@ -19,6 +19,9 @@ export const aiWorker = new Worker('ai-analysis', async (job: Job) => {
 
     logger.info(`AI Worker: Starting analysis for incident ${incidentId}`);
 
+    const { WorkflowService } = require('../../services/workflowService');
+    await WorkflowService.logEvent(incidentId, 'ai_analysis_started', 'AI diagnostic engine starting analysis');
+
     // Emit started event
     broadcast('ai-analysis-started', {
       incidentId,
@@ -27,6 +30,8 @@ export const aiWorker = new Worker('ai-analysis', async (job: Job) => {
 
     const analysis = await AIService.analyzeIncident(incidentId, incident);
     
+    await WorkflowService.logEvent(incidentId, 'ai_analysis_completed', 'AI diagnostic analysis completed successfully', { confidence: analysis.confidence });
+
     // Emit event to frontend
     broadcast('ai-analysis-completed', {
       incidentId,
@@ -38,6 +43,9 @@ export const aiWorker = new Worker('ai-analysis', async (job: Job) => {
   } catch (error: any) {
     logger.error(`AI Worker error for incident ${incidentId}: ${error.message}`);
     
+    const { WorkflowService } = require('../../services/workflowService');
+    await WorkflowService.logEvent(incidentId, 'ai_analysis_failed', `AI analysis failed: ${error.message}`);
+
     // Emit failed event
     broadcast('ai-analysis-failed', {
       incidentId,

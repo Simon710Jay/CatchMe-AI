@@ -63,6 +63,15 @@ export class IncidentGroupingService {
 
         broadcast('incident-created', incident);
         logger.info(`Created new incident: ${incident._id}`);
+
+        // Log workflow event
+        const IncidentWorkflowEvent = require('../models/IncidentWorkflowEvent').default;
+        await IncidentWorkflowEvent.create({
+          incidentId: incident._id,
+          eventType: 'incident_created',
+          message: `New incident detected in ${incident.service}: ${incident.title}`,
+          metadata: { service: incident.service, severity: incident.severity }
+        });
       }
 
       // Link log to incident

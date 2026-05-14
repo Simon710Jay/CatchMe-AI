@@ -7,6 +7,7 @@ export interface GitHubPR {
   branchName: string;
   prUrl?: string;
   status: PRStatus;
+  defaultBranch?: string;
   createdAt?: string;
   updatedAt?: string;
 }

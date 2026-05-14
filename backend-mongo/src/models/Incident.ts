@@ -8,6 +8,12 @@ export interface IIncident extends Document {
   firstSeen: Date;
   lastSeen: Date;
   status: string;
+  workflowStatus: string;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+  prCreated?: boolean;
+  prNumber?: number;
+  prUrl?: string;
 }
 
 const IncidentSchema: Schema = new Schema({
@@ -18,6 +24,17 @@ const IncidentSchema: Schema = new Schema({
   firstSeen: { type: Date, default: Date.now },
   lastSeen: { type: Date, default: Date.now },
   status: { type: String, default: 'open', index: true },
+  workflowStatus: { 
+    type: String, 
+    enum: ['open', 'investigating', 'pr_created', 'resolved', 'failed'],
+    default: 'open',
+    index: true 
+  },
+  resolvedAt: { type: Date },
+  resolvedBy: { type: String },
+  prCreated: { type: Boolean, default: false },
+  prNumber: { type: Number },
+  prUrl: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<IIncident>('Incident', IncidentSchema);

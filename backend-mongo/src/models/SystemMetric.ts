@@ -6,6 +6,8 @@ export interface ISystemMetric extends Document {
   responseTime: number;
   healthScore: number;
   activeIncidents: number;
+  criticalIncidents: number;
+  resolvedIncidents: number;
   totalErrors: number;
   timestamp: Date;
 }
@@ -16,6 +18,8 @@ const SystemMetricSchema: Schema = new Schema({
   responseTime: { type: Number, required: true },
   healthScore: { type: Number, required: true },
   activeIncidents: { type: Number, required: true },
+  criticalIncidents: { type: Number, required: true },
+  resolvedIncidents: { type: Number, required: true },
   totalErrors: { type: Number, required: true },
   timestamp: { type: Date, default: Date.now, index: true },
 });
