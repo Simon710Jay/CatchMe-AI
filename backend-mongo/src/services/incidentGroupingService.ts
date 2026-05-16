@@ -48,6 +48,8 @@ export class IncidentGroupingService {
           severity: log.severity,
           count: 1,
           status: 'open',
+          source: 'real',
+          isTest: false,
         });
         await incident.save();
 

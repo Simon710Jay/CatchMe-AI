@@ -9,10 +9,11 @@ import { SystemHealthCharts } from '@/components/SystemHealthCharts';
 import { IncidentList } from '@/components/IncidentList';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useStore } from '@/store/useStore';
+import { dashboardApi } from '@/services/api';
 
 export default function DashboardPage() {
   const { logs, incidents, summary, isConnected } = useDashboard();
-  const { aiAnalyses } = useStore();
+  const { aiAnalyses, aiStatuses } = useStore();
 
   // Get the latest available AI analysis
   const latestIncidentWithAnalysis = [...incidents]
@@ -55,13 +56,41 @@ export default function DashboardPage() {
           
           <div className="flex gap-3">
             <button 
-              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/logs/export?format=csv`, '_blank')}
+              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api'}/logs/export?format=csv`, '_blank')}
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-all hover:scale-[1.02] text-sm font-medium"
             >
               Export Logs (CSV)
             </button>
             <button 
-              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api'}/incidents/export?format=csv`, '_blank')}
+              onClick={async () => {
+                if (confirm('Clear all test/AI-generated incidents?')) {
+                  try {
+                    await dashboardApi.clearTestIncidents();
+                  } catch (err) {
+                    console.error('Failed to clear test incidents:', err);
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-500 rounded-lg border border-yellow-600/20 transition-all hover:scale-[1.02] text-sm font-medium"
+            >
+              Clear Test Incidents
+            </button>
+            <button 
+              onClick={async () => {
+                if (confirm('Are you sure you want to clear ALL data (incidents, logs, notifications)?')) {
+                  try {
+                    await dashboardApi.clearAllIncidents();
+                  } catch (err) {
+                    console.error('Failed to clear incidents:', err);
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-lg border border-red-600/20 transition-all hover:scale-[1.02] text-sm font-medium"
+            >
+              Clear All Data
+            </button>
+            <button 
+              onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000/api'}/incidents/export?format=csv`, '_blank')}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-[1.02] text-sm font-medium shadow-lg shadow-blue-500/20"
             >
               Export Incidents
@@ -88,7 +117,7 @@ export default function DashboardPage() {
           <LogTable logs={logs} />
           <AIInsightPanel 
             analysis={latestAnalysis} 
-            status={latestIncidentWithAnalysis ? useStore.getState().aiStatuses[latestIncidentWithAnalysis._id] : 'pending'} 
+            status={latestIncidentWithAnalysis ? aiStatuses[latestIncidentWithAnalysis._id] : 'pending'} 
           />
         </div>
       </main>

@@ -5,20 +5,13 @@ export const connectDB = async () => {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    logger.error('MONGODB_URI is not defined in environment variables');
+    logger.error('MONGODB_URI is not defined');
     return;
   }
 
-  console.log(`URI found: ${uri.substring(0, 20)}...`);
-
   try {
-    console.log(`Connecting to MongoDB...`);
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000,
-    });
-    console.log('✅ Successfully connected to MongoDB');
-    logger.info('✅ Successfully connected to MongoDB');
+    await mongoose.connect(uri, { family: 4 });
+    logger.info('✅ Connected to MongoDB');
   } catch (error: any) {
     logger.error(`❌ MongoDB connection error: ${error.message}`);
   }

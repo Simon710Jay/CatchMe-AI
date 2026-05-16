@@ -39,6 +39,10 @@ export interface Incident {
   prCreated?: boolean;
   prNumber?: number;
   prUrl?: string;
+  source: 'real' | 'ai';
+  isTest: boolean;
+  githubRepo?: string;
+  githubIssueId?: string;
   lastSeen: string;
   createdAt: string;
   updatedAt: string;
@@ -112,4 +116,14 @@ export interface GitHubPR {
   status: PRStatus;
   createdAt?: string;
   updatedAt?: string;
+}
+export interface GitHubIntegration {
+  workspaceId: string;
+  provider: 'github';
+  owner: string;
+  repo: string;
+  authType: 'oauth' | 'token';
+  defaultBranch: string;
+  connected: boolean;
+  updatedAt: string;
 }

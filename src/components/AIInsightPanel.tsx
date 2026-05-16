@@ -91,12 +91,12 @@ export const AIInsightPanel: React.FC<AIInsightPanelProps> = ({ analysis, status
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-500 font-medium">AI Confidence</span>
-                <span className="text-blue-400 font-bold">{Math.round(analysis.confidence * 100)}%</span>
+                <span className="text-blue-400 font-bold">{Math.round(analysis.confidence)}%</span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
                 <div 
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000" 
-                  style={{ width: `${analysis.confidence * 100}%` }}
+                  style={{ width: `${analysis.confidence}%` }}
                 ></div>
               </div>
             </div>

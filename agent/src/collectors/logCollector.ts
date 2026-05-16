@@ -11,7 +11,7 @@ export class LogCollector {
 
   start() {
     const filePath = config.logFilePath;
-    
+
     if (!fs.existsSync(filePath)) {
       logger.warn(`Log file not found at ${filePath}. Creating placeholder...`);
       fs.mkdirSync(require('path').dirname(filePath), { recursive: true });
@@ -58,7 +58,7 @@ export class LogCollector {
   private processLogLines(data: string) {
     const lines = data.split('\n').filter(line => line.trim() !== '');
     const payloads: LogPayload[] = lines.map(line => this.parseLogLine(line));
-    
+
     if (payloads.length > 0) {
       apiClient.sendLogs(payloads);
     }

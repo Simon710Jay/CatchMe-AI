@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Log, Incident, Notification, DashboardSummary, AIAnalysis, AIStatus, HealthHistoryPoint, ErrorDistribution, GitHubPR } from '../types';
+import { Log, Incident, Notification, DashboardSummary, AIAnalysis, AIStatus, HealthHistoryPoint, ErrorDistribution, GitHubPR, IncidentTimelineEvent } from '../types';
 
 interface DashboardState {
   logs: Log[];
@@ -12,6 +12,7 @@ interface DashboardState {
   errorDistribution: ErrorDistribution | null;
   isConnected: boolean;
   notifications: Notification[];
+  theme: 'dark' | 'light';
   workflowEvents: Record<string, IncidentTimelineEvent[]>;
   
   setLogs: (logs: Log[]) => void;
@@ -31,6 +32,7 @@ interface DashboardState {
   addHealthPoint: (point: HealthHistoryPoint) => void;
   setErrorDistribution: (distribution: ErrorDistribution) => void;
   setConnected: (status: boolean) => void;
+  setTheme: (theme: 'dark' | 'light') => void;
   setWorkflowEvents: (incidentId: string, events: IncidentTimelineEvent[]) => void;
   addWorkflowEvent: (incidentId: string, event: IncidentTimelineEvent) => void;
 }
@@ -46,6 +48,7 @@ export const useStore = create<DashboardState>((set) => ({
   healthHistory: [],
   errorDistribution: null,
   isConnected: false,
+  theme: 'dark',
   workflowEvents: {},
   
   setLogs: (logs) => set({ logs }),
@@ -100,6 +103,8 @@ export const useStore = create<DashboardState>((set) => ({
   setErrorDistribution: (distribution) => set({ errorDistribution: distribution }),
   
   setConnected: (status) => set({ isConnected: status }),
+  
+  setTheme: (theme) => set({ theme }),
 
   setWorkflowEvents: (incidentId, events) => set((state) => ({
     workflowEvents: { ...state.workflowEvents, [incidentId]: events }

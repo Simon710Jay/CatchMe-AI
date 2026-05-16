@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch \"src/**/*.ts\" --exec ts-node src/server.ts",
+    "dev": "nodemon --watch \"src/**/*.ts\" --exec \"ts-node --transpile-only\" src/server.ts",
     "start": "ts-node src/server.ts",
     "build": "tsc"
   },

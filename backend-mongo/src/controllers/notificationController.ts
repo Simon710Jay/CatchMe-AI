@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import Notification from '../models/Notification';
 import { broadcast } from '../websocket/socket';
@@ -6,6 +7,7 @@ import { logger } from '../logger/logger';
 export const notificationController = {
   list: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      logger.info(`List Notifications - DB ReadyState: ${mongoose.connection.readyState}`);
       const notifications = await Notification.find()
         .sort({ createdAt: -1 })
         .limit(50);
@@ -44,6 +46,26 @@ export const notificationController = {
       });
     } catch (error: any) {
       logger.error(`Mark as read error: ${error.message}`);
+      throw error;
+    }
+  },
+
+  clearAll: async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      logger.info('Incoming request: Clearing all notifications...');
+      
+      await Notification.deleteMany({});
+      
+      logger.info('Broadcasting notifications-cleared via sockets...');
+      broadcast('notifications-cleared', {});
+      
+      logger.info('Successfully cleared all notifications');
+      return reply.send({
+        success: true,
+        message: 'All notifications cleared',
+      });
+    } catch (error: any) {
+      logger.error(`Clear all notifications failed: ${error.message}`);
       throw error;
     }
   },

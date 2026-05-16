@@ -14,6 +14,10 @@ export interface IIncident extends Document {
   prCreated?: boolean;
   prNumber?: number;
   prUrl?: string;
+  source: 'real' | 'ai';
+  isTest: boolean;
+  githubRepo?: string;
+  githubIssueId?: string;
 }
 
 const IncidentSchema: Schema = new Schema({
@@ -24,6 +28,10 @@ const IncidentSchema: Schema = new Schema({
   firstSeen: { type: Date, default: Date.now },
   lastSeen: { type: Date, default: Date.now },
   status: { type: String, default: 'open', index: true },
+  source: { type: String, enum: ['real', 'ai'], default: 'real', index: true },
+  isTest: { type: Boolean, default: false, index: true },
+  githubRepo: { type: String },
+  githubIssueId: { type: String },
   workflowStatus: { 
     type: String, 
     enum: ['open', 'investigating', 'pr_created', 'resolved', 'failed'],

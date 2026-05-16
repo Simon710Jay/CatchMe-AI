@@ -8,6 +8,8 @@ import { StatsService } from '../services/statsService';
 import { WorkflowService } from '../services/workflowService';
 import { githubService } from '../github/githubService';
 import IncidentWorkflowEvent from '../models/IncidentWorkflowEvent';
+import GitHubIntegration from '../models/GitHubIntegration';
+import { decrypt } from '../utils/encryption';
 
 export const incidentController = {
   list: async (request: FastifyRequest, reply: FastifyReply) => {
@@ -90,6 +92,44 @@ export const incidentController = {
       throw error;
     }
   },
+  
+  promote: async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const incident = await Incident.findByIdAndUpdate(
+        id,
+        { 
+          source: 'real', 
+          isTest: false 
+        },
+        { new: true }
+      );
+
+      if (!incident) {
+        return reply.status(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Incident not found' },
+        });
+      }
+
+      await WorkflowService.logEvent(
+        id,
+        'incident_updated',
+        'Incident promoted from test to real status'
+      );
+
+      broadcast('incident-updated', incident);
+      logger.info(`Incident promoted: ${id}`);
+
+      return reply.send({
+        success: true,
+        data: incident,
+      });
+    } catch (error: any) {
+      logger.error(`Incident promote error: ${error.message}`);
+      throw error;
+    }
+  },
 
   createPR: async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -107,7 +147,31 @@ export const incidentController = {
         });
       }
 
-      // 2. Analysis Validation
+      // 2. Test Incident Guard
+      if (incident.source === 'ai' || incident.isTest) {
+        logger.warn(`[CONTROLLER] PR creation blocked for test incident: ${id}`);
+        return reply.status(400).send({
+          success: false,
+          message: 'Cannot create PR from test incident. Please promote to a real incident first.'
+        });
+      }
+
+      // 3. GitHub Integration Lookup
+      const workspaceId = 'default-workspace'; // TODO: Get from auth context
+      const integration = await GitHubIntegration.findOne({ workspaceId });
+      
+      if (!integration) {
+        logger.warn(`[CONTROLLER] GitHub not connected for workspace ${workspaceId}`);
+        return reply.status(400).send({
+          success: false,
+          message: 'GitHub not connected. Please go to Settings > Integrations to connect your repository.'
+        });
+      }
+
+      const token = decrypt(integration.accessToken);
+      const { owner, repo } = integration;
+
+      // 4. Analysis Validation
       const AIAnalysis = require('../models/AIAnalysis').default;
       const analysis = await AIAnalysis.findOne({ incidentId: id }).sort({ createdAt: -1 });
       if (!analysis) {
@@ -127,8 +191,8 @@ export const incidentController = {
       
       await WorkflowService.logEvent(id, 'investigation_started', 'Preparing GitHub remediation PR');
 
-      // 4. Trigger Service
-      const pr = await githubService.triggerSafeAutomation(id);
+      // 4. Trigger Service with integration config
+      const pr = await githubService.triggerSafeAutomation(id, { token, owner, repo });
 
       // 5. Update Incident State
       await Incident.findByIdAndUpdate(id, {
@@ -226,6 +290,81 @@ export const incidentController = {
       });
     } catch (error: any) {
       logger.error(`Get analysis error: ${error.message}`);
+      throw error;
+    }
+  },
+
+  clearAll: async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // Import models dynamically to avoid circular dependencies if any
+      const Log = require('../models/Log').default;
+      const IncidentWorkflowEvent = require('../models/IncidentWorkflowEvent').default;
+      const AIAnalysis = require('../models/AIAnalysis').default;
+      const Notification = require('../models/Notification').default;
+
+      // Delete all related data
+      await Promise.all([
+        Incident.deleteMany({}),
+        Log.deleteMany({}),
+        IncidentWorkflowEvent.deleteMany({}),
+        AIAnalysis.deleteMany({}),
+        Notification.deleteMany({}),
+      ]);
+
+      // Broadcast clearing events
+      broadcast('incidents-cleared', {});
+      broadcast('logs-cleared', {});
+      broadcast('notifications-cleared', {});
+      
+      logger.info('All incidents, logs, analyses, notifications and events cleared');
+      StatsService.broadcastStats();
+
+      return reply.send({
+        success: true,
+        message: 'All incidents and related data cleared successfully',
+      });
+    } catch (error: any) {
+      logger.error(`Clear all incidents error: ${error.message}`);
+      throw error;
+    }
+  },
+
+  clearTest: async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const Log = require('../models/Log').default;
+      const IncidentWorkflowEvent = require('../models/IncidentWorkflowEvent').default;
+      const AIAnalysis = require('../models/AIAnalysis').default;
+
+      // 1. Find all test incident IDs
+      const testIncidents = await Incident.find({ 
+        $or: [{ isTest: true }, { source: 'ai' }] 
+      }).select('_id');
+      const testIds = testIncidents.map(inc => inc._id);
+
+      if (testIds.length > 0) {
+        // 2. Delete related data
+        await Promise.all([
+          Incident.deleteMany({ _id: { $in: testIds } }),
+          Log.deleteMany({ incidentId: { $in: testIds } }),
+          IncidentWorkflowEvent.deleteMany({ incidentId: { $in: testIds } }),
+          AIAnalysis.deleteMany({ incidentId: { $in: testIds } }),
+          Notification.deleteMany({ relatedIncidentId: { $in: testIds } }),
+        ]);
+      }
+
+      // Broadcast clearing event
+      broadcast('incidents-updated', {}); // Trigger a refresh
+      broadcast('notifications-updated', {}); 
+      
+      logger.info(`Cleared ${testIds.length} test incidents`);
+      StatsService.broadcastStats();
+
+      return reply.send({
+        success: true,
+        message: `Cleared ${testIds.length} test incidents successfully`,
+      });
+    } catch (error: any) {
+      logger.error(`Clear test incidents error: ${error.message}`);
       throw error;
     }
   },

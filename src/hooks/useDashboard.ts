@@ -12,21 +12,23 @@ export const useDashboard = () => {
     setAIAnalysis,
     setPullRequests,
     setSummary, setHealthHistory, addHealthPoint, setErrorDistribution,
-    setConnected 
+    setConnected,
+    setTheme 
   } = useStore();
 
   useEffect(() => {
     // 1. Initial Data Fetch
     const fetchData = async () => {
       try {
-        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes, prsRes] = await Promise.all([
+        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes, prsRes, themeRes] = await Promise.all([
           dashboardApi.getLogs(),
           dashboardApi.getIncidents(),
           dashboardApi.getNotifications(),
           dashboardApi.getSummary(),
           dashboardApi.getHealthHistory(),
           dashboardApi.getErrorDistribution(),
-          dashboardApi.getPullRequests()
+          dashboardApi.getPullRequests(),
+          dashboardApi.getTheme()
         ]);
         setLogs(logsRes.data);
         setIncidents(incidentsRes.data);
@@ -34,6 +36,11 @@ export const useDashboard = () => {
         setSummary(summaryRes.data);
         setHealthHistory(historyRes.data);
         setErrorDistribution(distributionRes.data);
+        
+        if (themeRes.success) {
+          setTheme(themeRes.data.theme);
+          document.documentElement.setAttribute('data-theme', themeRes.data.theme);
+        }
         
         // Fetch latest AI analysis if available
         if (incidentsRes.data && incidentsRes.data.length > 0) {
@@ -116,6 +123,48 @@ export const useDashboard = () => {
       updateNotification(notification);
     });
 
+    socket.on('notifications-cleared', () => {
+      setNotifications([]);
+    });
+    
+    socket.on('incidents-cleared', () => {
+      setIncidents([]);
+      setSummary({ ...useStore.getState().summary!, activeIncidents: 0, criticalIncidents: 0, resolvedIncidents: 0 } as any);
+      toast.success('All incidents cleared');
+    });
+
+    socket.on('logs-cleared', () => {
+      setLogs([]);
+      toast.success('All logs cleared');
+    });
+
+    socket.on('incidents-updated', () => {
+      // Refresh incidents from API
+      const refreshIncidents = async () => {
+        try {
+          const res = await dashboardApi.getIncidents();
+          setIncidents(res.data);
+          const logsRes = await dashboardApi.getLogs();
+          setLogs(logsRes.data);
+        } catch (err) {
+          console.error('Failed to refresh incidents', err);
+        }
+      };
+      refreshIncidents();
+    });
+
+    socket.on('notifications-updated', () => {
+      const refreshNotifications = async () => {
+        try {
+          const res = await dashboardApi.getNotifications();
+          setNotifications(res.data);
+        } catch (err) {
+          console.error('Failed to refresh notifications', err);
+        }
+      };
+      refreshNotifications();
+    });
+
     socket.on('ai-analysis-started', ({ incidentId, status }) => {
       useStore.getState().setAIStatus(incidentId, status);
     });
@@ -191,6 +240,7 @@ export const useDashboard = () => {
       socket.off('incident-resolved');
       socket.off('notification-created');
       socket.off('notification-read');
+      socket.off('notifications-cleared');
       socket.off('ai-analysis-started');
       socket.off('ai-analysis-completed');
       socket.off('ai-analysis-failed');

@@ -14,11 +14,12 @@ interface IncidentModalProps {
   onClose: () => void;
 }
 
-export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose }) => {
+export const IncidentModal: React.FC<IncidentModalProps> = ({ incident: initialIncident, onClose }) => {
   const [isResolving, setIsResolving] = useState(false);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
   
   const { 
+    incidents,
     aiAnalyses, setAIAnalysis, 
     aiStatuses, setAIStatus,
     pullRequests, setPullRequest,
@@ -26,6 +27,7 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
     updateIncident
   } = useStore();
 
+  const incident = incidents.find(i => i._id === initialIncident._id) || initialIncident;
   const analysis = aiAnalyses[incident._id];
   const aiStatus = aiStatuses[incident._id] || 'pending';
   const pr = pullRequests[incident._id];
@@ -69,6 +71,18 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
       toast.error('Failed to resolve incident');
     } finally {
       setIsResolving(false);
+    }
+  };
+
+  const handlePromoteIncident = async () => {
+    try {
+      const res = await dashboardApi.promoteIncident(incident._id);
+      if (res.success) {
+        updateIncident(res.data);
+        toast.success('Incident promoted to real status');
+      }
+    } catch (err: any) {
+      toast.error('Failed to promote incident');
     }
   };
 
@@ -209,11 +223,17 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
                     <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto text-2xl">🐙</div>
                     <div className="max-w-xs mx-auto">
                       <p className="text-white font-medium mb-1">No Remediation PR Created</p>
-                      <p className="text-gray-500 text-sm">Automate the fix by generating a draft Pull Request with AI suggestions.</p>
+                      {incident.source === 'ai' || incident.isTest ? (
+                        <p className="text-amber-400/80 text-xs bg-amber-400/10 py-2 px-3 rounded-lg border border-amber-400/20">
+                          ⚠️ Cannot create PR from test incident. Please promote to a real incident first.
+                        </p>
+                      ) : (
+                        <p className="text-gray-500 text-sm">Automate the fix by generating a draft Pull Request with AI suggestions.</p>
+                      )}
                     </div>
                     <button 
                       onClick={handleCreatePR}
-                      disabled={isCreatingPR || incident.status === 'resolved'}
+                      disabled={isCreatingPR || incident.status === 'resolved' || incident.source === 'ai' || incident.isTest}
                       className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20"
                     >
                       {isCreatingPR ? (
@@ -228,9 +248,22 @@ export const IncidentModal: React.FC<IncidentModalProps> = ({ incident, onClose 
                         </>
                       )}
                     </button>
+
+                    {(incident.source === 'ai' || incident.isTest) && (
+                      <button 
+                        onClick={handlePromoteIncident}
+                        className="block w-full text-[10px] text-blue-400/60 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors mt-2"
+                      >
+                        Promote to Real Incident
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-purple-500/5 rounded-2xl border border-purple-500/10 overflow-hidden">
+                    <div className="px-6 py-3 bg-purple-500/10 border-b border-purple-500/20 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-widest">Linked Repository</span>
+                      <span className="text-xs font-mono text-purple-200">{incident.githubRepo || process.env.NEXT_PUBLIC_GITHUB_REPO || 'Default'}</span>
+                    </div>
                     <div className="px-6 py-4 flex items-center justify-between border-b border-purple-500/10">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">

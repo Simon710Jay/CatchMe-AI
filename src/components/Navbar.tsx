@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-[10px] text-white flex items-center justify-center rounded-full border-2 border-[#111827]">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-[10px] text-white flex items-center justify-center rounded-full border-2 border-card">
                   {unreadCount}
                 </span>
               )}

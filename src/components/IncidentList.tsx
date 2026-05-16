@@ -35,6 +35,11 @@ export const IncidentList: React.FC<IncidentListProps> = ({ incidents }) => {
                       PR {pr.status}
                     </span>
                   )}
+                  {(incident.source === 'ai' || incident.isTest) && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                      AI TEST
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-400 text-sm">
                   {incident.service} • {incident.count} events • Last seen {incident.lastSeen}
