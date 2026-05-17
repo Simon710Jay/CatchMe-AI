@@ -9,7 +9,8 @@ async function testConnection() {
   console.log('URI:', process.env.MONGODB_URI.replace(/:([^@]+)@/, ':****@'));
   
   try {
-    const uri = 'mongodb+srv://simonjay710_db_user:UGF9rF8yyaYU26So@cluster0.jpzhzik.mongodb.net/catchme-ai';
+    const uri = process.env.MONGODB_URI;
+    if (!uri) throw new Error('MONGODB_URI not found in environment');
     await mongoose.connect(uri, {
       family: 4
     });
