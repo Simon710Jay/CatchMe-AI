@@ -1,12 +1,13 @@
-import chokidar from 'chokidar';
-import fs from 'fs';
+import { watch, FSWatcher } from 'chokidar';
+import * as fs from 'fs';
+import * as path from 'path';
 import { config } from '../config';
 import { logger } from '../logger/logger';
 import { LogPayload, Severity } from '../types';
 import { apiClient } from '../transport/apiClient';
 
 export class LogCollector {
-  private watcher: chokidar.FSWatcher | null = null;
+  private watcher: FSWatcher | null = null;
   private fileSize: number = 0;
 
   start() {
@@ -14,14 +15,14 @@ export class LogCollector {
 
     if (!fs.existsSync(filePath)) {
       logger.warn(`Log file not found at ${filePath}. Creating placeholder...`);
-      fs.mkdirSync(require('path').dirname(filePath), { recursive: true });
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
       fs.writeFileSync(filePath, '');
     }
 
     this.fileSize = fs.statSync(filePath).size;
     logger.info(`Started monitoring log file: ${filePath}`);
 
-    this.watcher = chokidar.watch(filePath, {
+    this.watcher = watch(filePath, {
       persistent: true,
       usePolling: true,
       interval: 1000,
