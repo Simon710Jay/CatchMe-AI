@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { incidentController } from '../controllers/incidentController';
+import { incidentCleanupController } from '../controllers/incidentCleanupController';
 
 export default async function incidentRoutes(fastify: FastifyInstance) {
   fastify.get('/incidents', incidentController.list);
@@ -11,5 +12,8 @@ export default async function incidentRoutes(fastify: FastifyInstance) {
   fastify.post('/incidents/:id/create-pr', incidentController.createPR);
   fastify.get('/incidents/:id/timeline', incidentController.getTimeline);
   fastify.delete('/incidents/clear-all', incidentController.clearAll);
-  fastify.delete('/incidents/test', incidentController.clearTest);
+  
+  // Test Incident Cleanup Routes
+  fastify.delete('/incidents/test/clear', incidentCleanupController.clearTest);
+  fastify.get('/incidents/test/count', incidentCleanupController.getTestCount);
 }

@@ -73,7 +73,9 @@ export const dashboardApi = {
   },
 
   clearTestIncidents: async () => {
-    const response = await api.delete('/incidents/test');
+    const response = await api.delete('/incidents/test/clear', {
+      data: { confirm: true }
+    });
     return response.data;
   },
 

@@ -327,45 +327,5 @@ export const incidentController = {
       logger.error(`Clear all incidents error: ${error.message}`);
       throw error;
     }
-  },
-
-  clearTest: async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const Log = require('../models/Log').default;
-      const IncidentWorkflowEvent = require('../models/IncidentWorkflowEvent').default;
-      const AIAnalysis = require('../models/AIAnalysis').default;
-
-      // 1. Find all test incident IDs
-      const testIncidents = await Incident.find({ 
-        $or: [{ isTest: true }, { source: 'ai' }] 
-      }).select('_id');
-      const testIds = testIncidents.map(inc => inc._id);
-
-      if (testIds.length > 0) {
-        // 2. Delete related data
-        await Promise.all([
-          Incident.deleteMany({ _id: { $in: testIds } }),
-          Log.deleteMany({ incidentId: { $in: testIds } }),
-          IncidentWorkflowEvent.deleteMany({ incidentId: { $in: testIds } }),
-          AIAnalysis.deleteMany({ incidentId: { $in: testIds } }),
-          Notification.deleteMany({ relatedIncidentId: { $in: testIds } }),
-        ]);
-      }
-
-      // Broadcast clearing event
-      broadcast('incidents-updated', {}); // Trigger a refresh
-      broadcast('notifications-updated', {}); 
-      
-      logger.info(`Cleared ${testIds.length} test incidents`);
-      StatsService.broadcastStats();
-
-      return reply.send({
-        success: true,
-        message: `Cleared ${testIds.length} test incidents successfully`,
-      });
-    } catch (error: any) {
-      logger.error(`Clear test incidents error: ${error.message}`);
-      throw error;
-    }
-  },
+  }
 };
