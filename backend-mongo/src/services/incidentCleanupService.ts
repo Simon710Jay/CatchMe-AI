@@ -103,10 +103,9 @@ export class IncidentCleanupService {
 
     logger.info(`Cleanup complete: deleted ${result.deletedIncidents} incidents and ${result.deletedLogs} logs.`);
 
-    // Broadcast synchronization events
-    broadcast('test-incidents-cleared', { deletedCount: result.deletedIncidents });
-    broadcast('incident-deleted', {}); // Fallback for UI refresh if explicitly listening to this
-    broadcast('dashboard-stats-updated', {}); // Triggers explicit state sync
+    // Broadcast synchronization events to refresh UI state
+    broadcast('incidents-updated', { deletedCount: result.deletedIncidents });
+    broadcast('notifications-updated', {}); 
     
     // Trigger existing global stats sync
     StatsService.broadcastStats();

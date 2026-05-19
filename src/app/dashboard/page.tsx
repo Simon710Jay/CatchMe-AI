@@ -10,6 +10,7 @@ import { IncidentList } from '@/components/IncidentList';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useStore } from '@/store/useStore';
 import { dashboardApi } from '@/services/api';
+import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const { logs, incidents, summary, isConnected } = useDashboard();
@@ -62,13 +63,13 @@ export default function DashboardPage() {
               Export Logs (CSV)
             </button>
             <button 
-              onClick={async () => {
+              onClick={() => {
                 if (confirm('Clear all test/AI-generated incidents?')) {
-                  try {
-                    await dashboardApi.clearTestIncidents();
-                  } catch (err) {
-                    console.error('Failed to clear test incidents:', err);
-                  }
+                  toast.promise(dashboardApi.clearTestIncidents(), {
+                    loading: 'Clearing test incidents...',
+                    success: (data) => `Success: ${data.message || 'Test incidents cleared'}`,
+                    error: (err) => `Failed: ${err.response?.data?.error || err.message}`
+                  });
                 }
               }}
               className="px-4 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-500 rounded-lg border border-yellow-600/20 transition-all hover:scale-[1.02] text-sm font-medium"
@@ -76,13 +77,13 @@ export default function DashboardPage() {
               Clear Test Incidents
             </button>
             <button 
-              onClick={async () => {
+              onClick={() => {
                 if (confirm('Are you sure you want to clear ALL data (incidents, logs, notifications)?')) {
-                  try {
-                    await dashboardApi.clearAllIncidents();
-                  } catch (err) {
-                    console.error('Failed to clear incidents:', err);
-                  }
+                  toast.promise(dashboardApi.clearAllIncidents(), {
+                    loading: 'Clearing all data...',
+                    success: (data) => `Success: ${data.message || 'All data cleared'}`,
+                    error: (err) => `Failed: ${err.response?.data?.error || err.message}`
+                  });
                 }
               }}
               className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-lg border border-red-600/20 transition-all hover:scale-[1.02] text-sm font-medium"
