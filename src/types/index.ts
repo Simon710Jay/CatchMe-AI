@@ -117,13 +117,41 @@ export interface GitHubPR {
   createdAt?: string;
   updatedAt?: string;
 }
-export interface GitHubIntegration {
-  workspaceId: string;
-  provider: 'github';
+export interface GitHubOAuthResponse {
+  accessToken: string;
+  scope: string;
+  tokenType: string;
+}
+
+export interface GitHubRepository {
+  name: string;
   owner: string;
-  repo: string;
-  authType: 'oauth' | 'token';
+  private: boolean;
   defaultBranch: string;
+}
+
+export interface OAuthState {
+  userId: string;
+  createdAt: number;
+}
+
+export interface GitHubIntegration {
+  workspaceId?: string;
+  userId?: string;
+  provider: 'github';
+  owner?: string;
+  repo?: string;
+  authType: 'oauth' | 'token';
+  defaultBranch?: string;
   connected: boolean;
-  updatedAt: string;
+  
+  // OAuth metadata
+  githubId?: string;
+  username?: string;
+  avatarUrl?: string;
+  connectedRepositories?: GitHubRepository[];
+  connectedAt?: string;
+  lastUsedAt?: string;
+  status?: 'connected' | 'disconnected';
+  updatedAt?: string;
 }

@@ -11,6 +11,21 @@ export const api = axios.create({
   },
 });
 
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('catchme_jwt');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 export const dashboardApi = {
   testBackend: async () => {
     const response = await api.get('/test');
@@ -136,6 +151,26 @@ export const dashboardApi = {
 
   getGitHubOAuthUrl: async () => {
     const response = await api.get('/github/oauth-url');
+    return response.data;
+  },
+
+  authSession: async () => {
+    const response = await api.get('/auth/session');
+    return response.data;
+  },
+
+  getGitHubOAuthStatus: async () => {
+    const response = await api.get('/integrations/github/status');
+    return response.data;
+  },
+
+  disconnectGitHubOAuth: async () => {
+    const response = await api.post('/integrations/github/disconnect');
+    return response.data;
+  },
+
+  selectGitHubRepository: async (owner: string, repo: string, defaultBranch: string = 'main') => {
+    const response = await api.post('/integrations/github/select-repo', { owner, repo, defaultBranch });
     return response.data;
   },
 };

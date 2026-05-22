@@ -9,6 +9,7 @@ import metricsRoutes from './routes/metricsRoutes';
 import githubRoutes from './github/githubRoutes';
 import githubIntegrationRoutes from './routes/githubIntegrationRoutes';
 import userSettingsRoutes from './routes/userSettingsRoutes';
+import authRoutes from './routes/authRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
 import './queue/workers/aiWorker';
@@ -40,6 +41,7 @@ app.register(metricsRoutes, { prefix: '/api' });
 app.register(githubRoutes, { prefix: '/api' });
 app.register(githubIntegrationRoutes, { prefix: '/api' });
 app.register(userSettingsRoutes, { prefix: '/api' });
+app.register(authRoutes, { prefix: '/api' });
 
 // Health check
 app.get('/health', async () => {
