@@ -11,6 +11,17 @@ export const api = axios.create({
   },
 });
 
+// Automatically inject JWT Token for secure integration routes
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('github_integration_jwt');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 export const dashboardApi = {
   testBackend: async () => {
     const response = await api.get('/test');
@@ -114,6 +125,7 @@ export const dashboardApi = {
     return response.data;
   },
 
+  // Legacy manual connection APIs
   getGitHubSettings: async (workspaceId: string) => {
     const response = await api.get('/github/settings', { params: { workspaceId } });
     return response.data;
@@ -138,5 +150,21 @@ export const dashboardApi = {
     const response = await api.get('/github/oauth-url');
     return response.data;
   },
+
+  // 🎯 Production GitHub OAuth APIs (aligned with task)
+  getGitHubOAuthStatus: async () => {
+    const response = await api.get('/integrations/github/status');
+    return response.data;
+  },
+
+  selectActiveGitHubRepo: async (data: { owner: string; repo: string; defaultBranch?: string }) => {
+    const response = await api.post('/integrations/github/select-repo', data);
+    return response.data;
+  },
+
+  disconnectGitHubOAuth: async () => {
+    const response = await api.post('/integrations/github/disconnect');
+    return response.data;
+  }
 };
 

@@ -126,4 +126,17 @@ export interface GitHubIntegration {
   defaultBranch: string;
   connected: boolean;
   updatedAt: string;
+  userId?: string;
+  githubId?: string;
+  username?: string;
+  avatarUrl?: string;
+  connectedRepositories?: Array<{
+    name: string;
+    owner: string;
+    private: boolean;
+    defaultBranch: string;
+  }>;
+  connectedAt?: string;
+  lastUsedAt?: string;
+  status?: 'connected' | 'disconnected';
 }

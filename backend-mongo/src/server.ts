@@ -1,3 +1,4 @@
+// Trigger nodemon reload to refresh environmental variables
 import * as dotenv from 'dotenv';
 import path from 'path';
 

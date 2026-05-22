@@ -6,10 +6,23 @@ export interface IGitHubIntegration extends Document {
   provider: 'github';
   owner: string;
   repo: string;
-  accessToken: string; // Encrypted
+  accessToken: string; // Encrypted (for legacy or PAT)
   authType: 'oauth' | 'token';
   defaultBranch: string;
   connected: boolean;
+  githubId?: string;
+  username?: string;
+  avatarUrl?: string;
+  accessTokenEncrypted?: string; // Encrypted (for OAuth)
+  connectedRepositories?: Array<{
+    name: string;
+    owner: string;
+    private: boolean;
+    defaultBranch: string;
+  }>;
+  connectedAt?: Date;
+  lastUsedAt?: Date;
+  status?: 'connected' | 'disconnected';
 }
 
 const GitHubIntegrationSchema: Schema = new Schema({
@@ -22,6 +35,19 @@ const GitHubIntegrationSchema: Schema = new Schema({
   authType: { type: String, enum: ['oauth', 'token'], required: true },
   defaultBranch: { type: String, default: 'main' },
   connected: { type: Boolean, default: true },
+  githubId: { type: String },
+  username: { type: String },
+  avatarUrl: { type: String },
+  accessTokenEncrypted: { type: String },
+  connectedRepositories: [{
+    name: { type: String, required: true },
+    owner: { type: String, required: true },
+    private: { type: Boolean, default: false },
+    defaultBranch: { type: String, default: 'main' }
+  }],
+  connectedAt: { type: Date },
+  lastUsedAt: { type: Date },
+  status: { type: String, enum: ['connected', 'disconnected'], default: 'connected' }
 }, { timestamps: true });
 
 export default mongoose.model<IGitHubIntegration>('GitHubIntegration', GitHubIntegrationSchema);
