@@ -19,52 +19,95 @@ export const useDashboard = () => {
   useEffect(() => {
     // 1. Initial Data Fetch
     const fetchData = async () => {
-      try {
-        const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes, prsRes, themeRes] = await Promise.all([
-          dashboardApi.getLogs(),
-          dashboardApi.getIncidents(),
-          dashboardApi.getNotifications(),
-          dashboardApi.getSummary(),
-          dashboardApi.getHealthHistory(),
-          dashboardApi.getErrorDistribution(),
-          dashboardApi.getPullRequests(),
-          dashboardApi.getTheme()
-        ]);
-        setLogs(logsRes.data);
-        setIncidents(incidentsRes.data);
-        setNotifications(notificationsRes.data);
-        setSummary(summaryRes.data);
-        setHealthHistory(historyRes.data);
-        setErrorDistribution(distributionRes.data);
-        
-        if (themeRes.success) {
-          setTheme(themeRes.data.theme);
-          document.documentElement.setAttribute('data-theme', themeRes.data.theme);
-        }
-        
-        // Fetch latest AI analysis if available
-        if (incidentsRes.data && incidentsRes.data.length > 0) {
-          const latestIncident = incidentsRes.data[0];
-          try {
-            const analysisRes = await dashboardApi.getIncidentAnalysis(latestIncident._id);
-            if (analysisRes.success && analysisRes.data) {
-              setAIAnalysis(latestIncident._id, analysisRes.data);
-              useStore.getState().setAIStatus(latestIncident._id, analysisRes.data.status || 'completed');
-            }
-          } catch (err) {
-            // Might not have analysis yet, which is fine
+      const results = await Promise.allSettled([
+        dashboardApi.getLogs(),
+        dashboardApi.getIncidents(),
+        dashboardApi.getNotifications(),
+        dashboardApi.getSummary(),
+        dashboardApi.getHealthHistory(),
+        dashboardApi.getErrorDistribution(),
+        dashboardApi.getPullRequests(),
+        dashboardApi.getTheme()
+      ]);
+
+      const [logsRes, incidentsRes, notificationsRes, summaryRes, historyRes, distributionRes, prsRes, themeRes] = results;
+
+      if (logsRes.status === 'fulfilled') {
+        setLogs(logsRes.value.data);
+      } else {
+        console.error('Failed to fetch logs:', logsRes.reason);
+      }
+
+      let loadedIncidents: any[] = [];
+      if (incidentsRes.status === 'fulfilled') {
+        setIncidents(incidentsRes.value.data);
+        loadedIncidents = incidentsRes.value.data;
+      } else {
+        console.error('Failed to fetch incidents:', incidentsRes.reason);
+      }
+
+      if (notificationsRes.status === 'fulfilled') {
+        setNotifications(notificationsRes.value.data);
+      } else {
+        console.error('Failed to fetch notifications:', notificationsRes.reason);
+      }
+
+      if (summaryRes.status === 'fulfilled') {
+        setSummary(summaryRes.value.data);
+      } else {
+        console.error('Failed to fetch summary:', summaryRes.reason);
+        // Set a fallback summary so the UI doesn't remain in a loading spinner state forever
+        setSummary({
+          activeIncidents: 0,
+          totalErrors: 0,
+          avgResponseTime: 0,
+          systemHealth: 0,
+          criticalIncidents: 0,
+          resolvedIncidents: 0
+        });
+      }
+
+      if (historyRes.status === 'fulfilled') {
+        setHealthHistory(historyRes.value.data);
+      } else {
+        console.error('Failed to fetch health history:', historyRes.reason);
+      }
+
+      if (distributionRes.status === 'fulfilled') {
+        setErrorDistribution(distributionRes.value.data);
+      } else {
+        console.error('Failed to fetch error distribution:', distributionRes.reason);
+      }
+
+      if (themeRes.status === 'fulfilled' && themeRes.value.success) {
+        setTheme(themeRes.value.data.theme);
+        document.documentElement.setAttribute('data-theme', themeRes.value.data.theme);
+      } else if (themeRes.status === 'rejected') {
+        console.error('Failed to fetch theme:', themeRes.reason);
+      }
+
+      // Fetch latest AI analysis if available
+      if (loadedIncidents && loadedIncidents.length > 0) {
+        const latestIncident = loadedIncidents[0];
+        try {
+          const analysisRes = await dashboardApi.getIncidentAnalysis(latestIncident._id);
+          if (analysisRes.success && analysisRes.data) {
+            setAIAnalysis(latestIncident._id, analysisRes.data);
+            useStore.getState().setAIStatus(latestIncident._id, analysisRes.data.status || 'completed');
           }
+        } catch (err) {
+          // Might not have analysis yet, which is fine
         }
-        
-        if (prsRes.success && Array.isArray(prsRes.data)) {
-          const prRecord: Record<string, any> = {};
-          prsRes.data.forEach((pr: any) => {
-            prRecord[pr.incidentId] = pr;
-          });
-          setPullRequests(prRecord);
-        }
-      } catch (error) {
-        console.error('Failed to fetch initial dashboard data:', error);
+      }
+
+      if (prsRes.status === 'fulfilled' && prsRes.value.success && Array.isArray(prsRes.value.data)) {
+        const prRecord: Record<string, any> = {};
+        prsRes.value.data.forEach((pr: any) => {
+          prRecord[pr.incidentId] = pr;
+        });
+        setPullRequests(prRecord);
+      } else if (prsRes.status === 'rejected') {
+        console.error('Failed to fetch pull requests:', prsRes.reason);
       }
     };
 
@@ -185,14 +228,19 @@ export const useDashboard = () => {
     });
 
     socket.on('metrics-updated', (metric) => {
-      setSummary({
-        activeIncidents: metric.activeIncidents,
-        totalErrors: metric.totalErrors,
-        avgResponseTime: metric.responseTime,
-        systemHealth: metric.healthScore,
-        criticalIncidents: metric.criticalIncidents,
-        resolvedIncidents: metric.resolvedIncidents
-      });
+      const currentSummary = useStore.getState().summary;
+      // If repo is analyzed, don't overwrite its fields with basic system stats
+      if (!currentSummary?.isRepositoryAnalyzed) {
+        setSummary({
+          ...currentSummary,
+          activeIncidents: metric.activeIncidents,
+          totalErrors: metric.totalErrors,
+          avgResponseTime: metric.responseTime,
+          systemHealth: metric.healthScore,
+          criticalIncidents: metric.criticalIncidents,
+          resolvedIncidents: metric.resolvedIncidents
+        });
+      }
       addHealthPoint({
         timestamp: metric.timestamp,
         healthScore: metric.healthScore,
@@ -203,14 +251,30 @@ export const useDashboard = () => {
     });
 
     socket.on('stats-updated', (stats) => {
-      setSummary({
-        activeIncidents: stats.activeIncidents,
-        totalErrors: stats.totalErrors,
-        avgResponseTime: stats.responseTime,
-        systemHealth: stats.healthScore,
-        criticalIncidents: stats.criticalIncidents,
-        resolvedIncidents: stats.resolvedIncidents
-      });
+      const currentSummary = useStore.getState().summary;
+      if (!currentSummary?.isRepositoryAnalyzed) {
+        setSummary({
+          ...currentSummary,
+          activeIncidents: stats.activeIncidents,
+          totalErrors: stats.totalErrors,
+          avgResponseTime: stats.responseTime,
+          systemHealth: stats.healthScore,
+          criticalIncidents: stats.criticalIncidents,
+          resolvedIncidents: stats.resolvedIncidents
+        });
+      }
+    });
+
+    socket.on('repository-analyzed', () => {
+      const refreshSummary = async () => {
+        try {
+          const res = await dashboardApi.getSummary();
+          setSummary(res.data);
+        } catch (err) {
+          console.error('Failed to refresh summary after analysis', err);
+        }
+      };
+      refreshSummary();
     });
 
     socket.on('pr-opened', (pr) => {
@@ -249,6 +313,7 @@ export const useDashboard = () => {
       socket.off('pr-opened');
       socket.off('pr-status-updated');
       socket.off('workflow-event-created');
+      socket.off('repository-analyzed');
     };
   }, []);
 

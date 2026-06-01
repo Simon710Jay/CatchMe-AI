@@ -9,8 +9,14 @@ export const connectDB = async () => {
     return;
   }
 
+  // Disable global buffering so database operations fail fast instead of hanging when disconnected
+  mongoose.set('bufferCommands', false);
+
   try {
-    await mongoose.connect(uri, { family: 4 });
+    await mongoose.connect(uri, { 
+      family: 4,
+      serverSelectionTimeoutMS: 5000 // fail fast if Atlas is unreachable
+    });
     logger.info('✅ Connected to MongoDB');
   } catch (error: any) {
     logger.error(`❌ MongoDB connection error: ${error.message}`);

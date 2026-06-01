@@ -165,6 +165,21 @@ export const dashboardApi = {
   disconnectGitHubOAuth: async () => {
     const response = await api.post('/integrations/github/disconnect');
     return response.data;
+  },
+
+  analyzeRepository: async (workspaceId: string) => {
+    const response = await api.post('/github/analyze', { workspaceId });
+    return response.data;
+  },
+
+  getWebhookConfig: async (repositoryName: string, workspaceId: string = 'default-workspace') => {
+    const response = await api.get('/webhooks/config', { params: { repositoryName, workspaceId } });
+    return response.data;
+  },
+
+  updateWebhookConfig: async (data: { repositoryName: string; workspaceId?: string; webhookUrl: string; webhookSecret?: string; monitoringStatus?: string }) => {
+    const response = await api.post('/webhooks/config', data);
+    return response.data;
   }
 };
 

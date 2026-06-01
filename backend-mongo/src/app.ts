@@ -13,6 +13,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
 import './queue/workers/aiWorker';
 import { SystemMetricsCollector } from './metrics/systemMetricsCollector';
+import webhookRoutes from './routes/webhookRoutes';
 
 const app = fastify({
   logger: true,
@@ -40,6 +41,7 @@ app.register(metricsRoutes, { prefix: '/api' });
 app.register(githubRoutes, { prefix: '/api' });
 app.register(githubIntegrationRoutes, { prefix: '/api' });
 app.register(userSettingsRoutes, { prefix: '/api' });
+app.register(webhookRoutes); // Routes inside already contain /api prefix
 
 // Health check
 app.get('/health', async () => {

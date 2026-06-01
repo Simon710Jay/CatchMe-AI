@@ -9,9 +9,17 @@ export const GitHubIntegrationCard: React.FC = () => {
   const [integration, setIntegration] = useState<GitHubIntegration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isManualMode, setIsManualMode] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState('');
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   
+  // Continuous Monitoring state
+  const [monitoringConfig, setMonitoringConfig] = useState<any>(null);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [isConfiguringMonitor, setIsConfiguringMonitor] = useState(false);
+  const [isSavingMonitor, setIsSavingMonitor] = useState(false);
+
   // Manual PAT form state
   const [token, setToken] = useState('');
   const [owner, setOwner] = useState('');
@@ -91,22 +99,62 @@ export const GitHubIntegrationCard: React.FC = () => {
       setIsLoading(false);
     });
 
+    socket.on('analysis-progress', (data: any) => {
+      console.log('📡 Real-time Socket: Analysis progress', data);
+      setAnalysisProgress(data.message);
+    });
+
+    socket.on('monitor-updated', (data: any) => {
+      console.log('📡 Real-time Socket: Monitor updated', data);
+      setMonitoringConfig(data);
+    });
+
     return () => {
       socket.off('github-connected');
       socket.off('repositories-synced');
       socket.off('github-disconnected');
       socket.off('oauth-failed');
+      socket.off('analysis-progress');
+      socket.off('monitor-updated');
     };
   }, []);
 
+  // Fetch monitoring config when integration changes
+  useEffect(() => {
+    if (integration?.connected && integration?.owner && integration?.repo) {
+      dashboardApi.getWebhookConfig(`${integration.owner}/${integration.repo}`, workspaceId)
+        .then(res => {
+          if (res.success && res.data) {
+            setMonitoringConfig(res.data);
+            setWebhookUrl(res.data.webhookUrl || '');
+            setWebhookSecret(res.data.webhookSecret || '');
+          }
+        })
+        .catch(err => console.error('Failed to load webhook config', err));
+    }
+  }, [integration?.owner, integration?.repo, integration?.connected]);
+
   const fetchSettings = async () => {
     setIsLoading(true);
+    let oauthSuccess = false;
+
     try {
       // First, try loading the secure OAuth status
       const res = await dashboardApi.getGitHubOAuthStatus();
       if (res.success && res.data && res.data.status === 'connected') {
         setIntegration(res.data);
-      } else {
+        oauthSuccess = true;
+      }
+    } catch (error: any) {
+      // If unauthorized (e.g. invalid/expired JWT), clean up localStorage
+      if (error.response?.status === 401) {
+        localStorage.removeItem('github_integration_jwt');
+      }
+      console.log('GitHub OAuth status check skipped or failed, trying legacy settings.');
+    }
+
+    if (!oauthSuccess) {
+      try {
         // Fallback to legacy manual connection parameters
         const legacyRes = await dashboardApi.getGitHubSettings(workspaceId);
         if (legacyRes.success && legacyRes.data.connected) {
@@ -114,12 +162,13 @@ export const GitHubIntegrationCard: React.FC = () => {
         } else {
           setIntegration(null);
         }
+      } catch (error) {
+        console.error('Failed to fetch legacy connection settings:', error);
+        setIntegration(null);
       }
-    } catch (error) {
-      console.error('Failed to fetch connection settings');
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const handleManualSave = async (e: React.FormEvent) => {
@@ -186,19 +235,21 @@ export const GitHubIntegrationCard: React.FC = () => {
     }
   };
 
-  const testConnection = async () => {
-    setIsTesting(true);
+  const analyzeRepository = async () => {
+    setIsAnalyzing(true);
+    setAnalysisProgress('Starting analysis...');
     try {
-      const res = await dashboardApi.testGitHubConnection(workspaceId);
-      if (res.success && res.isValid) {
-        toast.success('Connection authenticated successfully!');
+      const res = await dashboardApi.analyzeRepository(workspaceId);
+      if (res.success) {
+        toast.success('Repository analyzed successfully!');
       } else {
-        toast.error('Connection verification failed. Token might be revoked.');
+        toast.error(res.message || 'Failed to analyze repository.');
       }
-    } catch (error) {
-      toast.error('Test connection error');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error analyzing repository');
     } finally {
-      setIsTesting(false);
+      setIsAnalyzing(false);
+      setAnalysisProgress('');
     }
   };
 
@@ -218,6 +269,7 @@ export const GitHubIntegrationCard: React.FC = () => {
       if (res.success) {
         toast.success('GitHub disconnected successfully.');
         setIntegration(null);
+        setMonitoringConfig(null);
       } else {
         toast.error(res.message || 'Failed to disconnect');
       }
@@ -225,6 +277,49 @@ export const GitHubIntegrationCard: React.FC = () => {
       toast.error('Error disconnecting integration');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveMonitor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingMonitor(true);
+    try {
+      const res = await dashboardApi.updateWebhookConfig({
+        repositoryName: `${integration?.owner}/${integration?.repo}`,
+        workspaceId,
+        webhookUrl,
+        webhookSecret,
+        monitoringStatus: 'active'
+      });
+      if (res.success) {
+        toast.success('Continuous monitoring started!');
+        setMonitoringConfig(res.data);
+        setIsConfiguringMonitor(false);
+      } else {
+        toast.error(res.message || 'Failed to configure monitoring.');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Error configuring monitoring');
+    } finally {
+      setIsSavingMonitor(false);
+    }
+  };
+
+  const toggleMonitoring = async (status: 'active' | 'paused') => {
+    try {
+      const res = await dashboardApi.updateWebhookConfig({
+        repositoryName: `${integration?.owner}/${integration?.repo}`,
+        workspaceId,
+        webhookUrl: monitoringConfig?.webhookUrl || '',
+        webhookSecret: monitoringConfig?.webhookSecret || '',
+        monitoringStatus: status
+      });
+      if (res.success) {
+        toast.success(`Monitoring ${status === 'active' ? 'resumed' : 'paused'}.`);
+        setMonitoringConfig(res.data);
+      }
+    } catch (error) {
+      toast.error('Failed to update monitoring status');
     }
   };
 
@@ -480,16 +575,21 @@ export const GitHubIntegrationCard: React.FC = () => {
               {/* Utility Operations Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <button 
-                  onClick={testConnection}
-                  disabled={isTesting}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={analyzeRepository}
+                  disabled={isAnalyzing}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold rounded-xl transition-all duration-300 flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[60px]"
                 >
-                  {isTesting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  <div className="flex items-center gap-2">
+                    {isAnalyzing ? (
+                      <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+                    )}
+                    <span>Sync & Analyze Repository</span>
+                  </div>
+                  {isAnalyzing && analysisProgress && (
+                    <span className="text-[10px] text-blue-400 font-medium animate-pulse">{analysisProgress}</span>
                   )}
-                  Test Credentials Sync
                 </button>
                 <button 
                   onClick={disconnect}
@@ -497,6 +597,76 @@ export const GitHubIntegrationCard: React.FC = () => {
                 >
                   Disconnect GitHub
                 </button>
+              </div>
+
+              {/* Continuous Monitoring Section */}
+              <div className="pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                      Continuous Monitoring
+                    </h4>
+                    <p className="text-[10px] text-gray-500 mt-1">Real-time webhook events and AI risk analysis</p>
+                  </div>
+                  
+                  {monitoringConfig?.monitoringStatus === 'active' ? (
+                    <button 
+                      onClick={() => toggleMonitoring('paused')}
+                      className="px-3 py-1.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg text-xs font-bold hover:bg-yellow-500/20 transition-all cursor-pointer"
+                    >
+                      Pause Monitoring
+                    </button>
+                  ) : monitoringConfig?.monitoringStatus === 'paused' ? (
+                    <button 
+                      onClick={() => toggleMonitoring('active')}
+                      className="px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500/20 transition-all cursor-pointer"
+                    >
+                      Resume Monitoring
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => setIsConfiguringMonitor(!isConfiguringMonitor)}
+                      className="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold hover:bg-blue-500/20 transition-all cursor-pointer"
+                    >
+                      Configure Webhook
+                    </button>
+                  )}
+                </div>
+
+                {isConfiguringMonitor && (
+                  <form onSubmit={handleSaveMonitor} className="space-y-4 bg-black/40 p-4 rounded-xl border border-white/5 mt-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Generic Webhook Proxy URL</label>
+                      <input 
+                        type="url"
+                        value={webhookUrl}
+                        onChange={(e) => setWebhookUrl(e.target.value)}
+                        placeholder="e.g., https://abc123.ngrok-free.app/api/webhooks/github"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                        required
+                      />
+                      <p className="text-[10px] text-gray-500">Provide the public URL (e.g., ngrok) that GitHub should send payloads to.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Webhook Secret (Optional)</label>
+                      <input 
+                        type="password"
+                        value={webhookSecret}
+                        onChange={(e) => setWebhookSecret(e.target.value)}
+                        placeholder="Secret for payload signature validation"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50"
+                      />
+                    </div>
+                    <button 
+                      type="submit"
+                      disabled={isSavingMonitor}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSavingMonitor ? 'Saving...' : 'Start Continuous Monitoring'}
+                    </button>
+                  </form>
+                )}
               </div>
             </div>
           )}

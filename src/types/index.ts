@@ -75,6 +75,22 @@ export interface DashboardSummary {
   systemHealth: number;
   criticalIncidents: number;
   resolvedIncidents: number;
+  
+  // Repository Metrics
+  isRepositoryAnalyzed?: boolean;
+  repositoryName?: string;
+  detectedTechnologies?: string[];
+  healthScore?: number;
+  openPRs?: number;
+  failedWorkflows?: number;
+  recentCommits?: number;
+  staleBranches?: number;
+  branchesCount?: number;
+  commitsCount?: number;
+  pullRequestsCount?: number;
+  workflowsCount?: number;
+  contributorsCount?: number;
+  issuesCount?: number;
 }
 
 export interface HealthHistoryPoint {

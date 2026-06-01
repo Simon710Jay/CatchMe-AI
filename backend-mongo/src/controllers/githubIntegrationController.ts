@@ -1,8 +1,10 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import GitHubIntegration from '../models/GitHubIntegration';
+import RepositoryInsight from '../models/RepositoryInsight';
 import { encrypt, decrypt } from '../utils/encryption';
 import { githubService } from '../github/githubService';
 import { logger } from '../logger/logger';
+import { Octokit } from '@octokit/rest';
 import axios from 'axios';
 import crypto from 'crypto';
 
@@ -52,7 +54,266 @@ export const githubIntegrationController = {
       });
     } catch (error: any) {
       logger.error(`Get settings error: ${error.message}`);
+      if (error.name === 'MongooseError' || error.message.includes('not connected') || error.message.includes('buffering timed out')) {
+        return reply.send({
+          success: true,
+          data: { connected: false, dbOffline: true }
+        });
+      }
       throw error;
+    }
+  },
+  analyzeRepository: async (request: FastifyRequest, reply: FastifyReply) => {
+    const { workspaceId = 'default-workspace' } = request.body as { workspaceId: string };
+    
+    // Broadcast helper
+    const { broadcast } = require('../websocket/socket');
+    const { StatsService } = require('../services/statsService');
+    
+    try {
+      // 1. Validate GitHub integration
+      const integration = await GitHubIntegration.findOne({ workspaceId });
+      if (!integration || !integration.connected) {
+        return reply.status(400).send({
+          success: false,
+          message: 'GitHub integration not connected. Please connect first.'
+        });
+      }
+
+      const encryptedToken = integration.accessToken || integration.accessTokenEncrypted;
+      if (!encryptedToken) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Access token missing from integration.'
+        });
+      }
+
+      // Decrypt token
+      const token = decrypt(encryptedToken);
+      const owner = integration.owner;
+      const repo = integration.repo;
+      const defaultBranch = integration.defaultBranch || 'main';
+
+      if (!owner || !repo) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Repository owner or name not configured.'
+        });
+      }
+
+      const octokit = new Octokit({ auth: token });
+
+      // Step 1: Analyzing repository...
+      broadcast('analysis-progress', { status: 'Analyzing repository...' });
+      logger.info(`[ANALYSIS] Stage 1: Fetching metadata for ${owner}/${repo}`);
+      
+      const { data: repoMeta } = await octokit.rest.repos.get({ owner, repo });
+      
+      // Step 2: Fetching commits...
+      broadcast('analysis-progress', { status: 'Fetching commits...' });
+      logger.info(`[ANALYSIS] Stage 2: Fetching branches, commits, PRs, contributors, issues`);
+      
+      const [
+        branchesRes,
+        commitsRes,
+        pullsRes,
+        contributorsRes,
+        issuesRes
+      ] = await Promise.all([
+        octokit.rest.repos.listBranches({ owner, repo, per_page: 100 }),
+        octokit.rest.repos.listCommits({ owner, repo, per_page: 100 }),
+        octokit.rest.pulls.list({ owner, repo, state: 'all', per_page: 100 }),
+        octokit.rest.repos.listContributors({ owner, repo, per_page: 100 }).catch(() => ({ data: [] })), // contributors list can fail/be empty for new repos
+        octokit.rest.issues.listForRepo({ owner, repo, state: 'all', per_page: 100 })
+      ]);
+
+      const branches = branchesRes.data || [];
+      const commits = commitsRes.data || [];
+      const pulls = pullsRes.data || [];
+      const contributors = contributorsRes.data || [];
+      const issues = issuesRes.data || [];
+
+      // Step 3: Scanning workflows...
+      broadcast('analysis-progress', { status: 'Scanning workflows...' });
+      logger.info(`[ANALYSIS] Stage 3: Fetching workflows and runs`);
+      
+      const [
+        workflowsRes,
+        workflowRunsRes
+      ] = await Promise.all([
+        octokit.rest.actions.listRepoWorkflows({ owner, repo }).catch(() => ({ data: { total_count: 0, workflows: [] } })),
+        octokit.rest.actions.listWorkflowRunsForRepo({ owner, repo, per_page: 50 }).catch(() => ({ data: { workflow_runs: [] } }))
+      ]);
+
+      const workflowsCount = workflowsRes.data?.total_count || 0;
+      const runs = workflowRunsRes.data?.workflow_runs || [];
+      const failedWorkflows = runs.filter((run: any) => run.conclusion === 'failure').length;
+
+      // Step 4: Generating insights...
+      broadcast('analysis-progress', { status: 'Generating insights...' });
+      logger.info(`[ANALYSIS] Stage 4: Tech stack detection and metrics computation`);
+
+      // Tech Stack Detection
+      const detectedTechnologies: string[] = [];
+      let rootFiles: string[] = [];
+      try {
+        const { data: rootContent } = await octokit.rest.repos.getContent({ owner, repo, path: '' });
+        rootFiles = Array.isArray(rootContent) ? rootContent.map(f => f.name) : [];
+      } catch (err: any) {
+        logger.error(`Error reading root repository content: ${err.message}`);
+      }
+
+      if (rootFiles.includes('package.json')) {
+        detectedTechnologies.push('Node.js');
+        try {
+          const { data: pkgData } = await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path: 'package.json'
+          }) as any;
+          
+          if (pkgData && pkgData.content) {
+            const packageJson = JSON.parse(Buffer.from(pkgData.content, 'base64').toString('utf-8'));
+            const allDeps = {
+              ...(packageJson.dependencies || {}),
+              ...(packageJson.devDependencies || {})
+            };
+            
+            if (allDeps['react']) detectedTechnologies.push('React');
+            if (allDeps['next']) detectedTechnologies.push('Next.js');
+            if (allDeps['express']) detectedTechnologies.push('Express');
+            if (allDeps['mongoose'] || allDeps['mongodb']) detectedTechnologies.push('MongoDB');
+            if (allDeps['pg'] || allDeps['postgres'] || allDeps['sequelize']) detectedTechnologies.push('PostgreSQL');
+          }
+        } catch (err: any) {
+          logger.error(`Error parsing package.json for tech detection: ${err.message}`);
+        }
+      }
+
+      if (rootFiles.includes('Dockerfile') || rootFiles.includes('docker-compose.yml')) {
+        detectedTechnologies.push('Docker');
+      }
+
+      if (rootFiles.includes('.github') || workflowsCount > 0) {
+        detectedTechnologies.push('GitHub Actions');
+      }
+
+      // Counts
+      const branchesCount = branches.length;
+      const commitsCount = commits.length;
+      const pullRequestsCount = pulls.length;
+      const contributorsCount = contributors.length;
+      // Filter out PRs from issues list (GitHub listForRepo includes both PRs and Issues)
+      const issuesCount = issues.filter((is: any) => !is.pull_request).length;
+
+      // Metrics calculation
+      const openPRs = pulls.filter((pr: any) => pr.state === 'open').length;
+      const openIssues = issues.filter((is: any) => !is.pull_request && is.state === 'open').length;
+
+      // Recent Commits: commits in last 14 days
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const recentCommits = commits.filter((c: any) => {
+        const commitDate = new Date(c.commit.committer?.date || c.commit.author?.date || '');
+        return commitDate >= fourteenDaysAgo;
+      }).length;
+
+      // Stale branches: non-default branch whose last commit committer date is > 30 days old
+      let staleBranches = 0;
+      const checkBranches = branches.slice(0, 10); // check top 10 branches to avoid rate limits
+      for (const branch of checkBranches) {
+        if (branch.name === defaultBranch) continue;
+        try {
+          const { data: branchCommit } = await octokit.rest.repos.getBranch({
+            owner,
+            repo,
+            branch: branch.name
+          });
+          const commitDateStr = branchCommit.commit.commit.committer?.date;
+          if (commitDateStr) {
+            const commitDate = new Date(commitDateStr);
+            const daysDiff = (Date.now() - commitDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysDiff > 30) {
+              staleBranches++;
+            }
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      // Calculate health score: base 100, deduct points for negative indicators
+      let healthScore = 100;
+      healthScore -= openPRs * 2;          // -2 per open PR
+      healthScore -= failedWorkflows * 10; // -10 per failed workflow run
+      healthScore -= openIssues * 1;       // -1 per open issue
+      healthScore -= staleBranches * 2;    // -2 per stale branch
+      healthScore = Math.max(0, Math.min(100, healthScore));
+
+      // Store results in MongoDB (upsert per workspaceId)
+      const insight = await RepositoryInsight.findOneAndUpdate(
+        { workspaceId },
+        {
+          repositoryName: `${owner}/${repo}`,
+          detectedTechnologies,
+          healthScore,
+          openPRs,
+          failedWorkflows,
+          recentCommits,
+          staleBranches,
+          branchesCount,
+          commitsCount,
+          pullRequestsCount,
+          workflowsCount,
+          contributorsCount,
+          issuesCount,
+          analyzedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+
+      logger.info(`[ANALYSIS] Successfully stored RepositoryInsight for ${owner}/${repo}`);
+
+      // Emit websocket event
+      broadcast('repository-analyzed', {
+        success: true,
+        insight
+      });
+
+      // Broadcast stats-updated to update dashboard automatically
+      const stats = await StatsService.getDashboardStats();
+      if (stats) {
+        broadcast('stats-updated', {
+          ...stats,
+          // Mixin repository metrics so dashboard updates automatically
+          isRepositoryAnalyzed: true,
+          repositoryName: `${owner}/${repo}`,
+          detectedTechnologies,
+          healthScore,
+          openPRs,
+          failedWorkflows,
+          recentCommits,
+          staleBranches,
+          branchesCount,
+          commitsCount,
+          pullRequestsCount,
+          workflowsCount,
+          contributorsCount,
+          issuesCount
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: insight
+      });
+
+    } catch (error: any) {
+      logger.error(`Repository analysis error: ${error.message}`);
+      return reply.status(500).send({
+        success: false,
+        message: `Analysis failed: ${error.message}`
+      });
     }
   },
 
@@ -392,6 +653,12 @@ export const githubIntegrationController = {
       });
     } catch (error: any) {
       logger.error(`GitHub OAuth status retrieval error: ${error.message}`);
+      if (error.name === 'MongooseError' || error.message.includes('not connected') || error.message.includes('buffering timed out')) {
+        return reply.send({
+          success: true,
+          data: { connected: false, dbOffline: true }
+        });
+      }
       return reply.status(500).send({
         success: false,
         error: { code: 'STATUS_FETCH_FAILURE', message: 'Failed to read connection status' }
