@@ -7,13 +7,12 @@ import { sanitizeBranchName } from '../utils/sanitizeBranchName';
 import { WorkflowService } from '../services/workflowService';
 
 // Initialize Octokit with a specific token
-const getOctokit = (token?: string) => {
-  const finalToken = token || process.env.GITHUB_TOKEN;
-  if (!finalToken) {
-    logger.error('CRITICAL: GITHUB_TOKEN is missing');
-    throw new Error('GitHub token not configured');
+const getOctokit = (token: string) => {
+  if (!token) {
+    logger.error('CRITICAL: GitHub token is missing');
+    throw new Error('GitHub token not configured for this workspace');
   }
-  return new Octokit({ auth: finalToken });
+  return new Octokit({ auth: token });
 };
 
 export const githubService = {
@@ -21,13 +20,13 @@ export const githubService = {
     logger.info(`[GITHUB] Starting remediation workflow for incident: ${incidentId}`);
     
     // 1. Validate Environment
-    const owner = integrationConfig?.owner || process.env.GITHUB_OWNER;
-    const repo = integrationConfig?.repo || process.env.GITHUB_REPO;
-    const token = integrationConfig?.token || process.env.GITHUB_TOKEN;
+    const owner = integrationConfig?.owner;
+    const repo = integrationConfig?.repo;
+    const token = integrationConfig?.token;
 
-    if (!owner || !repo) {
-      logger.error('[GITHUB] GITHUB_OWNER or GITHUB_REPO is missing');
-      throw new Error('GitHub repository configuration missing (OWNER/REPO)');
+    if (!owner || !repo || !token) {
+      logger.error('[GITHUB] GITHUB_OWNER, GITHUB_REPO, or token is missing in integrationConfig');
+      throw new Error('GitHub repository configuration missing. Please connect your GitHub account.');
     }
 
     try {

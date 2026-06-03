@@ -2,6 +2,9 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { githubService } from './githubService';
 import { AutomationPayload } from './githubTypes';
 
+import GitHubIntegration from '../models/GitHubIntegration';
+import { decrypt } from '../utils/encryption';
+
 export const githubController = {
   async createPR(
     request: FastifyRequest<{ Body: AutomationPayload }>,
@@ -13,7 +16,21 @@ export const githubController = {
         return reply.status(400).send({ error: 'incidentId is required' });
       }
 
-      const pr = await githubService.triggerSafeAutomation(incidentId);
+      // 3. GitHub Integration Lookup
+      const workspaceId = 'default-workspace'; // TODO: Get from auth context
+      const integration = await GitHubIntegration.findOne({ workspaceId });
+      
+      if (!integration) {
+        return reply.status(400).send({
+          success: false,
+          error: 'GitHub not connected. Please go to Settings > Integrations to connect your repository.'
+        });
+      }
+
+      const token = decrypt(integration.accessToken);
+      const { owner, repo } = integration;
+
+      const pr = await githubService.triggerSafeAutomation(incidentId, { token, owner, repo });
       return reply.status(201).send({
         success: true,
         message: 'Draft PR created successfully',
