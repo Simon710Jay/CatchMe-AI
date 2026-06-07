@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,10 +38,38 @@ export const Navbar = () => {
 
         {/* Desktop Auth */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/auth/login" className="text-sm font-bold text-gray-300 hover:text-white transition-colors">Login</Link>
-          <Link href="/auth/register" className="px-5 py-2.5 bg-white text-black text-sm font-bold rounded-lg hover:bg-gray-100 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
-            Sign Up
-          </Link>
+          {!isLoading && (
+            isAuthenticated ? (
+              <div className="relative group">
+                <button className="flex items-center gap-2 hover:bg-white/5 px-2 py-1.5 rounded-lg transition-colors">
+                  <span className="text-sm font-medium text-white">{user?.fullName}</span>
+                  <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center text-white font-bold text-sm">
+                    {user?.avatar || 'U'}
+                  </div>
+                </button>
+                
+                {/* Dropdown Menu */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-brand-800 border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right">
+                  <div className="p-2 space-y-1">
+                    <Link href="/overview" className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Dashboard</Link>
+                    <Link href="/integrations" className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Integrations</Link>
+                    <Link href="/settings" className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Settings</Link>
+                    <div className="h-px bg-white/10 my-1"></div>
+                    <button onClick={() => logout()} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-colors">
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Link href="/auth/login" className="text-sm font-bold text-gray-300 hover:text-white transition-colors">Login</Link>
+                <Link href="/auth/register" className="px-5 py-2.5 bg-white text-black text-sm font-bold rounded-lg hover:bg-gray-100 transition-all hover:scale-105 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                  Sign Up
+                </Link>
+              </>
+            )
+          )}
         </div>
 
         {/* Mobile Hamburger */}

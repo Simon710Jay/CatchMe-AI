@@ -13,7 +13,9 @@ import { errorHandler } from './middleware/errorHandler';
 import { initSocket } from './websocket/socket';
 import './queue/workers/aiWorker';
 import { SystemMetricsCollector } from './metrics/systemMetricsCollector';
+import fastifyCookie from '@fastify/cookie';
 import webhookRoutes from './routes/webhookRoutes';
+import authRoutes from './routes/authRoutes';
 
 const app = fastify({
   logger: true,
@@ -21,6 +23,8 @@ const app = fastify({
 });
 
 // Middleware
+app.register(fastifyCookie);
+
 app.register(cors, {
   origin: ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
   credentials: true,
@@ -33,6 +37,7 @@ app.register(rateLimit, {
 });
 
 // Routes
+app.register(authRoutes, { prefix: '/api/auth' });
 app.register(logRoutes, { prefix: '/api' });
 app.register(incidentRoutes, { prefix: '/api' });
 app.register(notificationRoutes, { prefix: '/api' });

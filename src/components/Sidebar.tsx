@@ -3,9 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export const Sidebar = () => {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const navItems = [
     { name: 'Overview', path: '/overview', icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
@@ -76,14 +78,14 @@ export const Sidebar = () => {
           );
         })}
 
-        {/* User Profile Hook (Mock) */}
+        {/* User Profile Hook */}
         <div className="mt-4 pt-4 border-t border-[var(--card-border)] flex items-center gap-3 px-3">
           <div className="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/20">
-            JD
+            {user?.avatar || 'U'}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-white leading-tight">Jane Doe</span>
-            <span className="text-xs text-gray-500">Free Plan</span>
+            <span className="text-sm font-bold text-white leading-tight">{user?.fullName || 'Loading...'}</span>
+            <span className="text-xs text-gray-500">{user?.role === 'admin' ? 'Admin' : 'User'}</span>
           </div>
         </div>
       </div>

@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Production-grade AI monitoring and incident response",
 };
 
+import { AuthProvider } from '@/context/AuthContext';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,8 +32,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-        <Toaster theme="system" position="bottom-right" richColors />
-        {children}
+        <AuthProvider>
+          <Toaster theme="system" position="bottom-right" richColors />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

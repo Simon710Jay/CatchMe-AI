@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
 // Array of routes that require authentication
 const protectedRoutes = [
@@ -21,12 +22,23 @@ const authRoutes = [
   '/auth/reset-password'
 ];
 
-export function middleware(request: NextRequest) {
+const JWT_SECRET = process.env.JWT_SECRET || 'catchme-super-secret-key-12345';
+const secretKey = new TextEncoder().encode(JWT_SECRET);
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // For now, we simulate auth check via a simple cookie `catchme_session`.
-  // In a real app, this would verify a JWT or NextAuth session.
-  const isAuthenticated = request.cookies.has('catchme_session');
+  const token = request.cookies.get('catchme_session')?.value;
+  let isAuthenticated = false;
+
+  if (token) {
+    try {
+      await jwtVerify(token, secretKey);
+      isAuthenticated = true;
+    } catch (err) {
+      isAuthenticated = false;
+    }
+  }
 
   // Check if the current route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));

@@ -1,7 +1,11 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export const Hero = () => {
+  const { isAuthenticated, isLoading } = useAuth();
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
       {/* Background Image & Overlay */}
@@ -30,16 +34,20 @@ export const Hero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 animate-fade-in-up animation-delay-300">
-          <Link href="/auth/register" className="w-full sm:w-auto px-8 py-4 bg-brand-blue hover:bg-blue-600 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2">
-            Get Started
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </Link>
+          {!isLoading && (
+            <Link href={isAuthenticated ? "/overview" : "/auth/register"} className="w-full sm:w-auto px-8 py-4 bg-brand-blue hover:bg-blue-600 text-white font-bold rounded-xl transition-all hover:scale-105 shadow-[0_0_20px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2">
+              {isAuthenticated ? "Go to Dashboard" : "Get Started"}
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </Link>
+          )}
           <button className="w-full sm:w-auto px-8 py-4 glass glass-hover text-white font-bold rounded-xl flex items-center justify-center gap-2">
             Book Demo
           </button>
-          <Link href="/overview" className="w-full sm:w-auto px-8 py-4 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 text-gray-300 hover:text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
-            View Dashboard
-          </Link>
+          {!isLoading && (
+            <Link href={isAuthenticated ? "/overview" : "/auth/login"} className="w-full sm:w-auto px-8 py-4 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/10 text-gray-300 hover:text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+              View Dashboard
+            </Link>
+          )}
         </div>
       </div>
 
