@@ -12,7 +12,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="flex-1 min-h-0 relative max-w-2xl">
-        <NotificationPanel />
+        <NotificationPanel isOpen={true} onClose={() => {}} notifications={[]} />
       </div>
     </div>
   );

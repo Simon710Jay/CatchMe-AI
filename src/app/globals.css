@@ -17,10 +17,11 @@
 }
 
 :root {
-  --background: #0B0F1A;
-  --foreground: #F8FAFC;
-  --card: #141A29;
-  --card-border: #1E293B;
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-border: #E2E8F0;
+  --dashboard-bg: #F8FAFC;
 }
 
 @theme inline {

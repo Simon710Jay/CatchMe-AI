@@ -45,7 +45,7 @@ const steps = [
 
 export const HowItWorks = () => {
   return (
-    <section className="py-24 bg-brand-800 border-y border-white/5 relative">
+    <section className="py-24 bg-brand-900 border-y border-white/5 relative">
       <div className="max-w-[1200px] mx-auto px-6 md:px-12 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-20">
           <h2 className="text-3xl md:text-5xl font-black text-white mb-6">How CatchMe AI Works</h2>
@@ -61,19 +61,14 @@ export const HowItWorks = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
             {steps.map((step, idx) => (
               <div key={idx} className="relative flex flex-col items-center text-center group">
-                <div className="w-24 h-24 rounded-2xl glass flex items-center justify-center mb-6 relative z-10 group-hover:scale-110 group-hover:border-white/20 transition-all duration-300 shadow-xl">
+                <div className="w-24 h-24 rounded-2xl glass flex items-center justify-center mb-6 relative z-10 group-hover:-translate-y-2 group-hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-300">
                   {step.icon}
-                  <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-brand-900 border border-white/10 flex items-center justify-center text-xs font-bold text-gray-400">
+                  <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-brand-800 border border-white/10 flex items-center justify-center text-xs font-bold text-gray-300">
                     {step.number}
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
                 <p className="text-sm text-gray-400 leading-relaxed max-w-[250px]">{step.description}</p>
-                
-                {/* Mobile Connector */}
-                {idx !== steps.length - 1 && (
-                  <div className="md:hidden w-0.5 h-12 bg-white/10 my-4" />
-                )}
               </div>
             ))}
           </div>

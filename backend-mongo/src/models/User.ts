@@ -7,6 +7,10 @@ export interface IUser extends Document {
   avatar?: string;
   role: 'admin' | 'user';
   lastLoginAt?: Date;
+  acceptedTermsAt: Date;
+  acceptedPrivacyAt: Date;
+  termsVersion: string;
+  privacyVersion: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +44,22 @@ const UserSchema = new Schema<IUser>(
     },
     lastLoginAt: {
       type: Date,
+    },
+    acceptedTermsAt: {
+      type: Date,
+      required: true,
+    },
+    acceptedPrivacyAt: {
+      type: Date,
+      required: true,
+    },
+    termsVersion: {
+      type: String,
+      required: true,
+    },
+    privacyVersion: {
+      type: String,
+      required: true,
     },
   },
   {

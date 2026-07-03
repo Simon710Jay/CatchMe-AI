@@ -10,10 +10,14 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   // Register
   fastify.post('/register', async (request, reply) => {
     try {
-      const { fullName, email, password } = request.body as any;
+      const { fullName, email, password, acceptedTerms, acceptedPrivacy } = request.body as any;
 
       if (!fullName || !email || !password) {
         return reply.status(400).send({ error: 'All fields are required' });
+      }
+
+      if (!acceptedTerms || !acceptedPrivacy) {
+        return reply.status(400).send({ error: 'You must accept the Terms of Service and Privacy Policy' });
       }
 
       const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -38,6 +42,10 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         passwordHash,
         avatar: initials,
         lastLoginAt: new Date(),
+        acceptedTermsAt: new Date(),
+        acceptedPrivacyAt: new Date(),
+        termsVersion: '1.0',
+        privacyVersion: '1.0',
       });
 
       const token = jwt.sign(
