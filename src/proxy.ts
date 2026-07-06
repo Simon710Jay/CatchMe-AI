@@ -25,7 +25,7 @@ const authRoutes = [
 const JWT_SECRET = process.env.JWT_SECRET || 'catchme-super-secret-key-12345';
 const secretKey = new TextEncoder().encode(JWT_SECRET);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   const token = request.cookies.get('catchme_session')?.value;

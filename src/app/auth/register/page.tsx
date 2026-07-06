@@ -32,9 +32,11 @@ export default function RegisterPage() {
     
     try {
       await register({
-        name: formData.name,
+        fullName: formData.name,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        acceptedTerms: true,
+        acceptedPrivacy: true
       });
       toast.success("Account created successfully!");
       router.push('/overview');
